@@ -64,8 +64,8 @@ export async function POST(req: Request) {
     }
 
     // 🥩 Intentar cubrir kilos
-    let usar1kg = Math.min(Math.floor(kilos), stock1kg);
-    let restante = kilos - usar1kg;
+    const usar1kg = Math.min(Math.floor(kilos), stock1kg);
+    const restante = kilos - usar1kg;
 
     let usar05kg = 0;
 
