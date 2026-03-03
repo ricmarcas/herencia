@@ -6,9 +6,12 @@ const auth = new google.auth.JWT({
   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
 });
 
-const sheets = google.sheets({ version: "v4", auth });
+const sheets = google.sheets({
+  version: "v4",
+  auth,
+});
 
-export async function getSheetData(range: string) {
+export async function getSheetData(range: string): Promise<string[][]> {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
     range,
@@ -20,7 +23,7 @@ export async function getSheetData(range: string) {
 export async function appendRow(
   range: string,
   values: (string | number | boolean)[]
-) {
+): Promise<void> {
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.GOOGLE_SHEET_ID,
     range,

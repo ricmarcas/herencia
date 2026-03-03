@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { getSheetData } from "../../../../lib/sheets";
+import { getSheetData } from "@/lib/sheets";
 
 export async function GET() {
   try {
@@ -11,13 +11,15 @@ export async function GET() {
       success: true,
       data,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Sheets error:", error);
 
     return NextResponse.json({
       success: false,
-      error: error?.message || "Unknown error",
-      details: error,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unknown error reading sheet",
     });
   }
 }
