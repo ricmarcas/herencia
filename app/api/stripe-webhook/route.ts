@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { headers } from "next/headers";
+import { google } from "googleapis";
 import { appendRow, getSheetData } from "@/lib/sheets";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
@@ -11,38 +11,33 @@ const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET as string;
 export async function POST(req: Request) {
   try {
     const rawBody = await req.text();
-    const sig = headers().get("stripe-signature");
+    const signature = req.headers.get("stripe-signature");
 
-    if (!sig) {
+    if (!signature) {
       return NextResponse.json({ error: "No signature" }, { status: 400 });
     }
 
     const event = stripe.webhooks.constructEvent(
       rawBody,
-      sig,
+      signature,
       endpointSecret
     );
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
 
-      const {
-        kilos,
-        verde,
-        roja,
-        chilePasado,
-        envio,
-        telefono,
-        direccion,
-        fecha,
-        ventana,
-      } = session.metadata as Record<string, string>;
+      const metadata = session.metadata ?? {};
 
-      const kilosNum = Number(kilos);
-      const verdeNum = Number(verde);
-      const rojaNum = Number(roja);
-      const chileNum = Number(chilePasado);
-      const envioNum = Number(envio);
+      const kilos = Number(metadata.kilos ?? 0);
+      const verde = Number(metadata.verde ?? 0);
+      const roja = Number(metadata.roja ?? 0);
+      const chilePasado = Number(metadata.chilePasado ?? 0);
+      const envio = Number(metadata.envio ?? 0);
+
+      const telefono = metadata.telefono ?? "";
+      const direccion = metadata.direccion ?? "";
+      const fechaEntrega = metadata.fecha ?? "";
+      const ventana = metadata.ventana ?? "";
 
       const total = session.amount_total
         ? session.amount_total / 100
@@ -53,18 +48,18 @@ export async function POST(req: Request) {
         session.id,
         new Date().toISOString(),
         telefono,
-        kilosNum,
-        verdeNum,
-        rojaNum,
-        chileNum,
-        direccion, // usamos direccion como CP/campo editable luego
-        envioNum,
+        kilos,
+        verde,
+        roja,
+        chilePasado,
+        direccion,
+        envio,
         total,
-        fecha,
+        fechaEntrega,
         ventana,
       ]);
 
-      // 📦 Descontar inventario
+      // 📦 Obtener inventario actual
       const inventario = await getSheetData("Inventario!A2:C20");
 
       const updatedRows = inventario.map((row) => {
@@ -72,16 +67,12 @@ export async function POST(req: Request) {
         let stock = Number(stockRaw);
 
         if (producto === "Barbacoa" && presentacion === "1kg") {
-          const usar1kg = Math.min(
-            Math.floor(kilosNum),
-            stock
-          );
+          const usar1kg = Math.min(Math.floor(kilos), stock);
           stock -= usar1kg;
         }
 
         if (producto === "Barbacoa" && presentacion === "0.5kg") {
-          const restante =
-            kilosNum - Math.floor(kilosNum);
+          const restante = kilos - Math.floor(kilos);
           if (restante > 0) {
             const usar05 = restante / 0.5;
             stock -= usar05;
@@ -89,26 +80,21 @@ export async function POST(req: Request) {
         }
 
         if (producto === "Salsa Verde") {
-          stock -= verdeNum;
+          stock -= verde;
         }
 
         if (producto === "Salsa Roja") {
-          stock -= rojaNum;
+          stock -= roja;
         }
 
         if (producto === "Salsa de Chile Pasado") {
-          stock -= chileNum;
+          stock -= chilePasado;
         }
 
         return [producto, presentacion, stock];
       });
 
-      // Actualizar hoja inventario
-      // Reescribimos rango completo
-      const stripeSheets = await import("@/lib/sheets");
-
-      const { google } = await import("googleapis");
-
+      // 🔄 Actualizar hoja Inventario
       const auth = new google.auth.JWT({
         email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
         key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
@@ -128,8 +114,11 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ received: true });
-  } catch (err: any) {
-    console.error("Webhook error:", err.message);
-    return NextResponse.json({ error: err.message }, { status: 400 });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Webhook error";
+    console.error("Webhook error:", message);
+
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
