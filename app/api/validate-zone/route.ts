@@ -37,8 +37,11 @@ export async function POST(req: Request) {
 
     // Buscar CP
     const zonaEncontrada = zonas.find((row) => {
-      const [cpSheet, , activo] = row;
-      return cpSheet === cp && activo === "TRUE";
+        const [cpSheetRaw, , activo] = row;
+
+        // Normalizar CP del sheet
+        const cpSheet = String(cpSheetRaw).padStart(5, "0");
+    return cpSheet === cp && activo === "TRUE";
     });
 
     if (!zonaEncontrada) {
