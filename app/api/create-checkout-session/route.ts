@@ -15,6 +15,10 @@ export async function POST(req: Request) {
       roja = 0,
       chilePasado = 0,
       envio = 0,
+      telefono,
+      direccion,
+      fecha,
+      ventana,
     } = body;
 
     if (!kilos || kilos < 1 || kilos > 4) {
@@ -24,87 +28,90 @@ export async function POST(req: Request) {
       });
     }
 
+    if (!telefono || !direccion || !fecha || !ventana) {
+      return NextResponse.json({
+        success: false,
+        message: "Datos incompletos del pedido",
+      });
+    }
+
     // 💰 Precios
     const PRECIO_KILO = 580;
     const PRECIO_SALSA = 50;
     const PRECIO_CHILE = 80;
 
-    const subtotalBarbacoa = kilos * PRECIO_KILO;
-    const subtotalVerde = verde * PRECIO_SALSA;
-    const subtotalRoja = roja * PRECIO_SALSA;
-    const subtotalChile = chilePasado * PRECIO_CHILE;
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+      {
+        price_data: {
+          currency: "mxn",
+          product_data: {
+            name: `Barbacoa Herencia (${kilos} kg)`,
+          },
+          unit_amount: PRECIO_KILO * 100,
+        },
+        quantity: kilos,
+      },
+    ];
 
-    const total =
-      subtotalBarbacoa +
-      subtotalVerde +
-      subtotalRoja +
-      subtotalChile +
-      envio;
+    if (verde > 0) {
+      lineItems.push({
+        price_data: {
+          currency: "mxn",
+          product_data: { name: "Salsa Verde 300ml" },
+          unit_amount: PRECIO_SALSA * 100,
+        },
+        quantity: verde,
+      });
+    }
 
-    // Stripe trabaja en centavos
+    if (roja > 0) {
+      lineItems.push({
+        price_data: {
+          currency: "mxn",
+          product_data: { name: "Salsa Roja 300ml" },
+          unit_amount: PRECIO_SALSA * 100,
+        },
+        quantity: roja,
+      });
+    }
+
+    if (chilePasado > 0) {
+      lineItems.push({
+        price_data: {
+          currency: "mxn",
+          product_data: { name: "Salsa de Chile Pasado 300ml" },
+          unit_amount: PRECIO_CHILE * 100,
+        },
+        quantity: chilePasado,
+      });
+    }
+
+    if (envio > 0) {
+      lineItems.push({
+        price_data: {
+          currency: "mxn",
+          product_data: { name: "Costo de envío" },
+          unit_amount: envio * 100,
+        },
+        quantity: 1,
+      });
+    }
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
-      line_items: [
-        {
-          price_data: {
-            currency: "mxn",
-            product_data: {
-              name: `Barbacoa Herencia (${kilos} kg)`,
-            },
-            unit_amount: PRECIO_KILO * 100,
-          },
-          quantity: kilos,
-        },
-        ...(verde > 0
-          ? [
-              {
-                price_data: {
-                  currency: "mxn",
-                  product_data: { name: "Salsa Verde 300ml" },
-                  unit_amount: PRECIO_SALSA * 100,
-                },
-                quantity: verde,
-              },
-            ]
-          : []),
-        ...(roja > 0
-          ? [
-              {
-                price_data: {
-                  currency: "mxn",
-                  product_data: { name: "Salsa Roja 300ml" },
-                  unit_amount: PRECIO_SALSA * 100,
-                },
-                quantity: roja,
-              },
-            ]
-          : []),
-        ...(chilePasado > 0
-          ? [
-              {
-                price_data: {
-                  currency: "mxn",
-                  product_data: { name: "Salsa de Chile Pasado 300ml" },
-                  unit_amount: PRECIO_CHILE * 100,
-                },
-                quantity: chilePasado,
-              },
-            ]
-          : []),
-        ...(envio > 0
-          ? [
-              {
-                price_data: {
-                  currency: "mxn",
-                  product_data: { name: "Costo de envío" },
-                  unit_amount: envio * 100,
-                },
-                quantity: 1,
-              },
-            ]
-          : []),
-      ],
+      line_items: lineItems,
+      metadata: {
+        kilos: String(kilos),
+        verde: String(verde),
+        roja: String(roja),
+        chilePasado: String(chilePasado),
+        envio: String(envio),
+        telefono: String(telefono),
+        direccion: String(direccion),
+        fecha: String(fecha),
+        ventana: String(ventana),
+      },
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cancel`,
     });
