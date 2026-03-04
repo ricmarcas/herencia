@@ -100,16 +100,18 @@ export default function PedidoPage() {
           />
         )}
 
-        {/* RESUMEN DINÁMICO */}
-        <div className="mt-8 pt-6 border-t text-sm space-y-1">
-          <p>Barbacoa: ${totalBarbacoa}</p>
-          <p>Salsas: ${totalSalsas}</p>
-          <p>Envío: ${pedido.envio}</p>
-          <hr />
-          <p className="font-semibold">
-            Total (IVA incluido): ${total}
-          </p>
-        </div>
+        {/* RESUMEN DINÁMICO (NO EN PASO 1) */}
+        {step > 1 && (
+          <div className="mt-8 pt-6 border-t text-sm space-y-1">
+            <p>Barbacoa: ${totalBarbacoa}</p>
+            <p>Salsas: ${totalSalsas}</p>
+            <p>Envío: ${pedido.envio}</p>
+            <hr />
+            <p className="font-semibold">
+              Total (IVA incluido): ${total}
+            </p>
+          </div>
+        )}
 
       </div>
     </main>
@@ -228,7 +230,17 @@ function PasoKilos({
           <button
             key={kg}
             onClick={() =>
-              setPedido((prev) => ({ ...prev, kilos: kg }))
+              setPedido((prev) => {
+                const nuevoMax = kg * 3;
+
+                return {
+                  ...prev,
+                  kilos: kg,
+                  verde: Math.min(prev.verde, nuevoMax),
+                  roja: Math.min(prev.roja, nuevoMax),
+                  chilePasado: Math.min(prev.chilePasado, nuevoMax),
+                };
+              })
             }
             className={`py-3 rounded-xl border ${
               pedido.kilos === kg
@@ -288,7 +300,11 @@ function PasoSalsas({
     tipo: "verde" | "roja" | "chilePasado",
     valor: number
   ) => {
-    if (valor < 0 || valor > max) return;
+    if (valor < 0) return;
+
+    if (valor > max) {
+      valor = max;
+    }
 
     setPedido((prev) => ({ ...prev, [tipo]: valor }));
   };
