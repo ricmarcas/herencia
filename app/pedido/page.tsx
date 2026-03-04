@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 /* =========================
-   Tipos
+TIPOS
 ========================= */
 
 type Pedido = {
@@ -27,13 +27,13 @@ type Precios = {
 };
 
 /* =========================
-   Página Principal
+PAGE
 ========================= */
 
 export default function PedidoPage() {
   const router = useRouter();
 
-  const [step, setStep] = useState<number>(1);
+  const [step, setStep] = useState(1);
 
   const [pedido, setPedido] = useState<Pedido>({
     cp: "",
@@ -53,61 +53,46 @@ export default function PedidoPage() {
     chilePasado: 0,
   });
 
-  const [loadingPrecios, setLoadingPrecios] = useState<boolean>(true);
+  const [productosCargados, setProductosCargados] = useState(false);
 
   /* =========================
-     Cargar productos dinámicos
-  ========================== */
+  CARGAR PRODUCTOS
+  ========================= */
 
-  useEffect(() => {
-    const cargarProductos = async () => {
-      try {
-        const res = await fetch("/api/productos");
-        const data = await res.json();
+  const cargarProductos = async () => {
+    const res = await fetch("/api/productos");
+    const data = await res.json();
 
-        if (data.success) {
-          const lista = data.productos;
+    if (data.success) {
+      const lista = data.productos;
 
-          setPrecios({
-            barbacoa:
-              lista.find((p: { nombre: string }) => p.nombre === "Barbacoa")
-                ?.precio || 0,
-            verde:
-              lista.find((p: { nombre: string }) => p.nombre === "Salsa Verde")
-                ?.precio || 0,
-            roja:
-              lista.find((p: { nombre: string }) => p.nombre === "Salsa Roja")
-                ?.precio || 0,
-            chilePasado:
-              lista.find(
-                (p: { nombre: string }) =>
-                  p.nombre === "Salsa de Chile Pasado"
-              )?.precio || 0,
-          });
-        }
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoadingPrecios(false);
-      }
-    };
+      setPrecios({
+        barbacoa:
+          lista.find((p: { nombre: string }) => p.nombre === "Barbacoa")
+            ?.precio || 0,
+        verde:
+          lista.find((p: { nombre: string }) => p.nombre === "Salsa Verde")
+            ?.precio || 0,
+        roja:
+          lista.find((p: { nombre: string }) => p.nombre === "Salsa Roja")
+            ?.precio || 0,
+        chilePasado:
+          lista.find(
+            (p: { nombre: string }) =>
+              p.nombre === "Salsa de Chile Pasado"
+          )?.precio || 0,
+      });
 
-    cargarProductos();
-  }, []);
-
-  if (loadingPrecios) {
-    return (
-      <main className="min-h-screen flex items-center justify-center">
-        <p>Cargando productos...</p>
-      </main>
-    );
-  }
+      setProductosCargados(true);
+    }
+  };
 
   /* =========================
-     Totales dinámicos
-  ========================== */
+  TOTALES
+  ========================= */
 
   const totalBarbacoa = pedido.kilos * precios.barbacoa;
+
   const totalSalsas =
     pedido.verde * precios.verde +
     pedido.roja * precios.roja +
@@ -127,10 +112,14 @@ export default function PedidoPage() {
         </div>
 
         {step === 1 && (
-          <PasoCodigoPostal setPedido={setPedido} next={next} />
+          <PasoCodigoPostal
+            setPedido={setPedido}
+            next={next}
+            cargarProductos={cargarProductos}
+          />
         )}
 
-        {step === 2 && (
+        {step === 2 && productosCargados && (
           <PasoKilos
             pedido={pedido}
             setPedido={setPedido}
@@ -160,10 +149,12 @@ export default function PedidoPage() {
         )}
 
         {step === 5 && (
-          <PasoConfirmacion total={total} back={back} />
+          <PasoConfirmacion
+            total={total}
+            back={back}
+          />
         )}
 
-        {/* RESUMEN (no en paso 1) */}
         {step > 1 && (
           <div className="mt-8 pt-6 border-t text-sm space-y-1">
             <p>Barbacoa: ${totalBarbacoa}</p>
@@ -182,22 +173,30 @@ export default function PedidoPage() {
 }
 
 /* =========================
-   PASO 1 – CP
+PASO 1
 ========================= */
 
 type Paso1Props = {
   setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
   next: () => void;
+  cargarProductos: () => Promise<void>;
 };
 
-function PasoCodigoPostal({ setPedido, next }: Paso1Props) {
-  const [cpInput, setCpInput] = useState<string>("");
-  const [mensaje, setMensaje] = useState<string>("");
+function PasoCodigoPostal({
+  setPedido,
+  next,
+  cargarProductos,
+}: Paso1Props) {
+
+  const [cpInput, setCpInput] = useState("");
+  const [mensaje, setMensaje] = useState("");
 
   const validar = async () => {
     const res = await fetch("/api/validate-zone", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ cp: cpInput }),
     });
 
@@ -213,10 +212,11 @@ function PasoCodigoPostal({ setPedido, next }: Paso1Props) {
       setMensaje(
         data.envio === 0
           ? "✅ Entregamos en tu zona – Envío GRATIS"
-          : `✅ Entregamos en tu zona – Costo de envío: $${data.envio}`
+          : `✅ Entregamos en tu zona – Envío $${data.envio}`
       );
 
-      setTimeout(() => next(), 800);
+      await cargarProductos();
+      next();
     } else {
       setMensaje("Aún no entregamos en tu zona.");
     }
@@ -229,7 +229,6 @@ function PasoCodigoPostal({ setPedido, next }: Paso1Props) {
       </h2>
 
       <input
-        type="text"
         value={cpInput}
         onChange={(e) => setCpInput(e.target.value)}
         placeholder="Ej. 03020"
@@ -253,7 +252,7 @@ function PasoCodigoPostal({ setPedido, next }: Paso1Props) {
 }
 
 /* =========================
-   PASO 2 – KILOS
+PASO 2
 ========================= */
 
 type Paso2Props = {
@@ -282,8 +281,8 @@ function PasoKilos({
 
       <p className="text-sm text-center text-neutral-600 mb-4">
         {pedido.envio === 0
-          ? "✅ Entregamos en tu zona – Envío GRATIS"
-          : `✅ Entregamos en tu zona – Envío $${pedido.envio}`}
+          ? "Envío GRATIS"
+          : `Envío $${pedido.envio}`}
       </p>
 
       <div className="grid grid-cols-3 gap-3 mb-6">
@@ -292,20 +291,21 @@ function PasoKilos({
             key={kg}
             onClick={() =>
               setPedido((prev) => {
-                const nuevoMax = kg * 3;
+                const max = kg * 3;
+
                 return {
                   ...prev,
                   kilos: kg,
-                  verde: Math.min(prev.verde, nuevoMax),
-                  roja: Math.min(prev.roja, nuevoMax),
-                  chilePasado: Math.min(prev.chilePasado, nuevoMax),
+                  verde: Math.min(prev.verde, max),
+                  roja: Math.min(prev.roja, max),
+                  chilePasado: Math.min(prev.chilePasado, max),
                 };
               })
             }
             className={`py-3 rounded-xl border ${
               pedido.kilos === kg
                 ? "bg-[#7a5c3e] text-white"
-                : "bg-white"
+                : ""
             }`}
           >
             {kg} kg
@@ -315,16 +315,13 @@ function PasoKilos({
 
       <button
         onClick={() => router.push("/pedido-especial")}
-        className="text-sm text-[#7a5c3e] underline mb-6 block text-center"
+        className="text-sm underline mb-6"
       >
         ¿Más de 4 kg? Pedido especial
       </button>
 
       <div className="flex justify-between">
-        <button onClick={back} className="text-neutral-500">
-          Atrás
-        </button>
-
+        <button onClick={back}>Atrás</button>
         <button
           onClick={next}
           className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl"
@@ -337,7 +334,7 @@ function PasoKilos({
 }
 
 /* =========================
-   PASO 3 – SALSAS
+PASO 3
 ========================= */
 
 type Paso3Props = {
@@ -379,13 +376,15 @@ function PasoSalsas({
         { nombre: "Salsa Roja", key: "roja", precio: precios.roja },
         { nombre: "Salsa de Chile Pasado", key: "chilePasado", precio: precios.chilePasado },
       ].map((salsa) => (
-        <div key={salsa.key} className="flex justify-between items-center mb-4">
+        <div key={salsa.key} className="flex justify-between mb-4">
+
           <div>
             <p>{salsa.nombre}</p>
-            <p className="text-sm text-neutral-500">${salsa.precio}</p>
+            <p className="text-sm">${salsa.precio}</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex gap-2 items-center">
+
             <button
               onClick={() =>
                 cambiar(
@@ -393,7 +392,6 @@ function PasoSalsas({
                   (pedido[salsa.key as keyof Pedido] as number) - 1
                 )
               }
-              className="px-3 border rounded"
             >
               -
             </button>
@@ -407,18 +405,16 @@ function PasoSalsas({
                   (pedido[salsa.key as keyof Pedido] as number) + 1
                 )
               }
-              className="px-3 border rounded"
             >
               +
             </button>
+
           </div>
         </div>
       ))}
 
       <div className="flex justify-between">
-        <button onClick={back} className="text-neutral-500">
-          Atrás
-        </button>
+        <button onClick={back}>Atrás</button>
 
         <button
           onClick={next}
@@ -432,7 +428,7 @@ function PasoSalsas({
 }
 
 /* =========================
-   PASO 4 – FECHA
+PASO 4
 ========================= */
 
 type Paso4Props = {
@@ -448,6 +444,7 @@ function PasoFecha({
   next,
   back,
 }: Paso4Props) {
+
   return (
     <>
       <h2 className="text-2xl font-semibold mb-6 text-center">
@@ -467,6 +464,7 @@ function PasoFecha({
       />
 
       <div className="mb-6">
+
         <label className="block mb-2">
           <input
             type="radio"
@@ -478,7 +476,7 @@ function PasoFecha({
                 ventana: e.target.value,
               }))
             }
-          />{" "}
+          />
           9:00 – 12:00
         </label>
 
@@ -493,15 +491,14 @@ function PasoFecha({
                 ventana: e.target.value,
               }))
             }
-          />{" "}
+          />
           15:00 – 18:00
         </label>
+
       </div>
 
       <div className="flex justify-between">
-        <button onClick={back} className="text-neutral-500">
-          Atrás
-        </button>
+        <button onClick={back}>Atrás</button>
 
         <button
           onClick={next}
@@ -515,7 +512,7 @@ function PasoFecha({
 }
 
 /* =========================
-   PASO 5
+PASO 5
 ========================= */
 
 function PasoConfirmacion({
@@ -525,6 +522,7 @@ function PasoConfirmacion({
   total: number;
   back: () => void;
 }) {
+
   return (
     <>
       <h2 className="text-2xl font-semibold mb-6 text-center">
@@ -536,13 +534,15 @@ function PasoConfirmacion({
       </p>
 
       <div className="flex justify-between">
-        <button onClick={back} className="text-neutral-500">
+
+        <button onClick={back}>
           Atrás
         </button>
 
         <button className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl">
           Pagar ahora
         </button>
+
       </div>
     </>
   );
