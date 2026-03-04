@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
@@ -271,7 +271,43 @@ function PasoKilos({
   router,
 }: Paso2Props) {
 
-  const opciones = [1, 1.5, 2, 2.5, 3, 3.5, 4];
+  const [maxKilos, setMaxKilos] = useState(4);
+
+  useEffect(() => {
+
+    const consultarInventario = async () => {
+
+      const res = await fetch("/api/validate-inventory", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ kilos: 4 })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+
+        const maxDisponible =
+          data.detalle.usar1kg +
+          data.detalle.usar05kg * 0.5;
+
+        setMaxKilos(maxDisponible);
+
+      }
+
+    };
+
+    consultarInventario();
+
+  }, []);
+
+  const todasOpciones = [1,1.5,2,2.5,3,3.5,4];
+
+  const opciones = todasOpciones.filter(
+    (kg) => kg <= maxKilos
+  );
 
   return (
     <>
@@ -322,6 +358,7 @@ function PasoKilos({
 
       <div className="flex justify-between">
         <button onClick={back}>Atrás</button>
+
         <button
           onClick={next}
           className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl"
