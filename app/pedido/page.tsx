@@ -271,30 +271,23 @@ function PasoKilos({
   router,
 }: Paso2Props) {
 
-  const [maxKilos, setMaxKilos] = useState(4);
+  const [maxKilos, setMaxKilos] = useState<number>(4);
 
   useEffect(() => {
 
     const consultarInventario = async () => {
 
-      const res = await fetch("/api/validate-inventory", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ kilos: 4 })
-      });
+      try {
 
-      const data = await res.json();
+        const res = await fetch("/api/max-inventory");
+        const data = await res.json();
 
-      if (data.success) {
+        if (data.success) {
+          setMaxKilos(data.maxKilos);
+        }
 
-        const maxDisponible =
-          data.detalle.usar1kg +
-          data.detalle.usar05kg * 0.5;
-
-        setMaxKilos(maxDisponible);
-
+      } catch (err) {
+        console.error("Error consultando inventario", err);
       }
 
     };
@@ -303,7 +296,7 @@ function PasoKilos({
 
   }, []);
 
-  const todasOpciones = [1,1.5,2,2.5,3,3.5,4];
+  const todasOpciones = [1, 1.5, 2, 2.5, 3, 3.5, 4];
 
   const opciones = todasOpciones.filter(
     (kg) => kg <= maxKilos
@@ -322,20 +315,24 @@ function PasoKilos({
       </p>
 
       <div className="grid grid-cols-3 gap-3 mb-6">
+
         {opciones.map((kg) => (
+
           <button
             key={kg}
             onClick={() =>
               setPedido((prev) => {
-                const max = kg * 3;
+
+                const maxSalsas = kg * 3;
 
                 return {
                   ...prev,
                   kilos: kg,
-                  verde: Math.min(prev.verde, max),
-                  roja: Math.min(prev.roja, max),
-                  chilePasado: Math.min(prev.chilePasado, max),
+                  verde: Math.min(prev.verde, maxSalsas),
+                  roja: Math.min(prev.roja, maxSalsas),
+                  chilePasado: Math.min(prev.chilePasado, maxSalsas),
                 };
+
               })
             }
             className={`py-3 rounded-xl border ${
@@ -345,8 +342,11 @@ function PasoKilos({
             }`}
           >
             {kg} kg
+
           </button>
+
         ))}
+
       </div>
 
       <button
@@ -357,7 +357,10 @@ function PasoKilos({
       </button>
 
       <div className="flex justify-between">
-        <button onClick={back}>Atrás</button>
+
+        <button onClick={back}>
+          Atrás
+        </button>
 
         <button
           onClick={next}
@@ -365,6 +368,7 @@ function PasoKilos({
         >
           Continuar
         </button>
+
       </div>
     </>
   );
