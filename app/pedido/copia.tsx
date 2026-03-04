@@ -49,36 +49,6 @@ type CheckoutResponse = {
 };
 
 /* =========================
-HEADER ETAPAS
-========================= */
-
-function Etapas({ step }: { step: number }) {
-
-  const etapa = step <= 4 ? 1 : step === 5 ? 2 : 3;
-
-  return (
-    <div className="flex justify-between mb-6 text-xs text-center">
-
-      <div className="flex-1">
-        <div className={`h-2 rounded ${etapa >= 1 ? "bg-[#7a5c3e]" : "bg-gray-200"}`} />
-        <p className="mt-1">Orden</p>
-      </div>
-
-      <div className="flex-1 mx-2">
-        <div className={`h-2 rounded ${etapa >= 2 ? "bg-[#7a5c3e]" : "bg-gray-200"}`} />
-        <p className="mt-1">Envío</p>
-      </div>
-
-      <div className="flex-1">
-        <div className={`h-2 rounded ${etapa >= 3 ? "bg-[#7a5c3e]" : "bg-gray-200"}`} />
-        <p className="mt-1">Pago</p>
-      </div>
-
-    </div>
-  );
-}
-
-/* =========================
 PAGE
 ========================= */
 
@@ -115,7 +85,6 @@ export default function PedidoPage() {
   const cargarProductos = async () => {
 
     const res = await fetch("/api/productos");
-
     const data = await res.json() as { success: boolean; productos: ProductoAPI[] };
 
     if (!data.success) return;
@@ -133,7 +102,6 @@ export default function PedidoPage() {
     });
 
     setProductosCargados(true);
-
   };
 
   /* =========================
@@ -153,15 +121,12 @@ export default function PedidoPage() {
   const back = () => setStep(s => s - 1);
 
   return (
-
     <main className="min-h-screen bg-[#f5f1e8] flex items-center justify-center px-4 py-12">
 
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8">
 
-        <Etapas step={step} />
-
         <div className="text-sm text-neutral-500 mb-6 text-center">
-          Paso {step} de 7
+          Paso {step} de 5
         </div>
 
         {step === 1 && (
@@ -203,23 +168,6 @@ export default function PedidoPage() {
 
         {step === 5 && (
           <PasoConfirmacion
-            total={total}
-            next={next}
-            back={back}
-          />
-        )}
-
-        {step === 6 && (
-          <PasoEnvio
-            pedido={pedido}
-            setPedido={setPedido}
-            next={next}
-            back={back}
-          />
-        )}
-
-        {step === 7 && (
-          <PasoPago
             pedido={pedido}
             total={total}
             back={back}
@@ -245,24 +193,24 @@ export default function PedidoPage() {
       </div>
 
     </main>
-
   );
-
 }
 
 /* =========================
 PASO 1
 ========================= */
 
+type Paso1Props = {
+  setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
+  next: () => void;
+  cargarProductos: () => Promise<void>;
+};
+
 function PasoCodigoPostal({
   setPedido,
   next,
   cargarProductos,
-}: {
-  setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
-  next: () => void;
-  cargarProductos: () => Promise<void>;
-}) {
+}: Paso1Props) {
 
   const [cpInput, setCpInput] = useState("");
   const [mensaje, setMensaje] = useState("");
@@ -271,7 +219,9 @@ function PasoCodigoPostal({
 
     const res = await fetch("/api/validate-zone", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify({ cp: cpInput })
     });
 
@@ -297,7 +247,6 @@ function PasoCodigoPostal({
     await cargarProductos();
 
     next();
-
   };
 
   return (
@@ -333,19 +282,21 @@ function PasoCodigoPostal({
 PASO 2
 ========================= */
 
+type Paso2Props = {
+  pedido: Pedido;
+  setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
+  next: () => void;
+  back: () => void;
+  router: AppRouterInstance;
+};
+
 function PasoKilos({
   pedido,
   setPedido,
   next,
   back,
   router,
-}: {
-  pedido: Pedido;
-  setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
-  next: () => void;
-  back: () => void;
-  router: AppRouterInstance;
-}) {
+}: Paso2Props) {
 
   const [maxKilos, setMaxKilos] = useState<number>(4);
 
@@ -354,7 +305,6 @@ function PasoKilos({
     const consultarInventario = async () => {
 
       const res = await fetch("/api/max-inventory");
-
       const data = await res.json() as MaxInventoryResponse;
 
       if (data.success) {
@@ -437,7 +387,6 @@ function PasoKilos({
         </button>
 
       </div>
-
     </>
   );
 }
@@ -448,19 +397,21 @@ PASO 3
 
 type SalsaKey = "verde" | "roja" | "chilePasado";
 
+type Paso3Props = {
+  pedido: Pedido;
+  setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
+  next: () => void;
+  back: () => void;
+  precios: Precios;
+};
+
 function PasoSalsas({
   pedido,
   setPedido,
   next,
   back,
   precios,
-}: {
-  pedido: Pedido;
-  setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
-  next: () => void;
-  back: () => void;
-  precios: Precios;
-}) {
+}: Paso3Props) {
 
   const max = pedido.kilos * 3;
 
@@ -474,11 +425,9 @@ function PasoSalsas({
   };
 
   const salsas = [
-
     { nombre:"Salsa Verde", key:"verde" as SalsaKey, precio:precios.verde },
     { nombre:"Salsa Roja", key:"roja" as SalsaKey, precio:precios.roja },
     { nombre:"Salsa de Chile Pasado", key:"chilePasado" as SalsaKey, precio:precios.chilePasado },
-
   ];
 
   return (
@@ -532,7 +481,6 @@ function PasoSalsas({
         </button>
 
       </div>
-
     </>
   );
 }
@@ -541,17 +489,19 @@ function PasoSalsas({
 PASO 4
 ========================= */
 
+type Paso4Props = {
+  pedido: Pedido;
+  setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
+  next: () => void;
+  back: () => void;
+};
+
 function PasoFecha({
   pedido,
   setPedido,
   next,
   back,
-}: {
-  pedido: Pedido;
-  setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
-  next: () => void;
-  back: () => void;
-}) {
+}: Paso4Props) {
 
   return (
     <>
@@ -625,7 +575,6 @@ function PasoFecha({
         </button>
 
       </div>
-
     </>
   );
 }
@@ -635,97 +584,6 @@ PASO 5
 ========================= */
 
 function PasoConfirmacion({
-  total,
-  next,
-  back,
-}: {
-  total: number;
-  next: () => void;
-  back: () => void;
-}) {
-
-  return (
-    <>
-      <h2 className="text-2xl font-semibold mb-6 text-center">
-        Confirmar pedido
-      </h2>
-
-      <p className="text-center mb-6">
-        Total a pagar: ${total}
-      </p>
-
-      <div className="flex justify-between">
-
-        <button onClick={back}>
-          Atrás
-        </button>
-
-        <button
-          onClick={next}
-          className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl"
-        >
-          Continuar
-        </button>
-
-      </div>
-
-    </>
-  );
-}
-
-/* =========================
-PASO 6
-========================= */
-
-function PasoEnvio({
-  next,
-  back
-}: {
-  pedido: Pedido
-  setPedido: React.Dispatch<React.SetStateAction<Pedido>>
-  next: () => void
-  back: () => void
-}) {
-
-  return (
-    <>
-      <h2 className="text-2xl font-semibold mb-6 text-center">
-        Datos de entrega
-      </h2>
-
-      <input
-        placeholder="Teléfono"
-        className="w-full border rounded-xl px-4 py-3 mb-4"
-      />
-
-      <textarea
-        placeholder="Dirección completa"
-        className="w-full border rounded-xl px-4 py-3 mb-6"
-      />
-
-      <div className="flex justify-between">
-
-        <button onClick={back}>
-          Atrás
-        </button>
-
-        <button
-          onClick={next}
-          className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl"
-        >
-          Continuar al pago
-        </button>
-
-      </div>
-    </>
-  );
-}
-
-/* =========================
-PASO 7
-========================= */
-
-function PasoPago({
   pedido,
   total,
   back,
@@ -774,7 +632,7 @@ function PasoPago({
   return (
     <>
       <h2 className="text-2xl font-semibold mb-6 text-center">
-        Pago
+        Confirmar pedido
       </h2>
 
       <p className="text-center mb-6">
