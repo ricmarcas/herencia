@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 /* =========================
    Tipos
@@ -25,8 +26,7 @@ type Pedido = {
 export default function PedidoPage() {
   const router = useRouter();
 
-  const [step, setStep] = useState(1);
-  const totalSteps = 5;
+  const [step, setStep] = useState<number>(1);
 
   const [pedido, setPedido] = useState<Pedido>({
     cp: "",
@@ -39,39 +39,27 @@ export default function PedidoPage() {
     ventana: "",
   });
 
-  /* =========================
-     Calcular Total
-  ========================= */
+  const totalBarbacoa = pedido.kilos * 580;
+  const totalSalsas =
+    pedido.verde * 50 +
+    pedido.roja * 50 +
+    pedido.chilePasado * 80;
 
-  const calcularTotal = () => {
-    const precioKilo = 580;
-    const precioVerde = 50;
-    const precioRoja = 50;
-    const precioChile = 80;
+  const total = totalBarbacoa + totalSalsas + pedido.envio;
 
-    const totalBarbacoa = pedido.kilos * precioKilo;
-    const totalSalsas =
-      pedido.verde * precioVerde +
-      pedido.roja * precioRoja +
-      pedido.chilePasado * precioChile;
-
-    return totalBarbacoa + totalSalsas + pedido.envio;
-  };
-
-  const next = () => setStep((s) => Math.min(s + 1, totalSteps));
-  const back = () => setStep((s) => Math.max(s - 1, 1));
+  const next = () => setStep((s) => s + 1);
+  const back = () => setStep((s) => s - 1);
 
   return (
     <main className="min-h-screen bg-[#f5f1e8] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8">
 
         <div className="text-sm text-neutral-500 mb-6 text-center">
-          Paso {step} de {totalSteps}
+          Paso {step} de 5
         </div>
 
         {step === 1 && (
           <PasoCodigoPostal
-            pedido={pedido}
             setPedido={setPedido}
             next={next}
           />
@@ -107,11 +95,21 @@ export default function PedidoPage() {
 
         {step === 5 && (
           <PasoConfirmacion
-            pedido={pedido}
-            total={calcularTotal()}
+            total={total}
             back={back}
           />
         )}
+
+        {/* RESUMEN DINÁMICO */}
+        <div className="mt-8 pt-6 border-t text-sm space-y-1">
+          <p>Barbacoa: ${totalBarbacoa}</p>
+          <p>Salsas: ${totalSalsas}</p>
+          <p>Envío: ${pedido.envio}</p>
+          <hr />
+          <p className="font-semibold">
+            Total (IVA incluido): ${total}
+          </p>
+        </div>
 
       </div>
     </main>
@@ -122,28 +120,41 @@ export default function PedidoPage() {
    PASO 1 – CP
 ========================= */
 
-function PasoCodigoPostal({
-  pedido,
-  setPedido,
-  next,
-}: any) {
-  const [cp, setCp] = useState("");
+type Paso1Props = {
+  setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
+  next: () => void;
+};
+
+function PasoCodigoPostal({ setPedido, next }: Paso1Props) {
+  const [cpInput, setCpInput] = useState<string>("");
+  const [mensaje, setMensaje] = useState<string>("");
 
   const validar = async () => {
     const res = await fetch("/api/validate-zone", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cp }),
+      body: JSON.stringify({ cp: cpInput }),
     });
 
     const data = await res.json();
 
     if (data.success) {
-      setPedido({ ...pedido, cp, envio: data.envio });
-      next();
+      setPedido((prev) => ({
+        ...prev,
+        cp: cpInput,
+        envio: data.envio,
+      }));
+
+      setMensaje(
+        data.envio === 0
+          ? "✅ Entregamos en tu zona – Envío GRATIS"
+          : `✅ Entregamos en tu zona – Costo de envío: $${data.envio}`
+      );
+
+      setTimeout(() => next(), 800);
     } else {
-      alert(
-        "Aún no entregamos en tu zona. Pronto activaremos formulario especial."
+      setMensaje(
+        "Aún no entregamos en tu zona. Próximamente formulario especial."
       );
     }
   };
@@ -156,18 +167,24 @@ function PasoCodigoPostal({
 
       <input
         type="text"
-        value={cp}
-        onChange={(e) => setCp(e.target.value)}
+        value={cpInput}
+        onChange={(e) => setCpInput(e.target.value)}
         placeholder="Ej. 03020"
         className="w-full border rounded-xl px-4 py-3 mb-6"
       />
 
       <button
         onClick={validar}
-        className="w-full bg-[#7a5c3e] hover:bg-[#5f452f] text-white py-3 rounded-xl"
+        className="w-full bg-[#7a5c3e] text-white py-3 rounded-xl"
       >
         Validar zona
       </button>
+
+      {mensaje && (
+        <p className="mt-4 text-center text-sm text-neutral-600">
+          {mensaje}
+        </p>
+      )}
     </>
   );
 }
@@ -176,27 +193,43 @@ function PasoCodigoPostal({
    PASO 2 – KILOS
 ========================= */
 
+type Paso2Props = {
+  pedido: Pedido;
+  setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
+  next: () => void;
+  back: () => void;
+  router: AppRouterInstance;
+};
+
 function PasoKilos({
   pedido,
   setPedido,
   next,
   back,
   router,
-}: any) {
+}: Paso2Props) {
 
   const opciones = [1, 1.5, 2, 2.5, 3, 3.5, 4];
 
   return (
     <>
-      <h2 className="text-2xl font-semibold mb-6 text-center">
+      <h2 className="text-2xl font-semibold mb-4 text-center">
         Selecciona kilos
       </h2>
+
+      <p className="text-sm text-center text-neutral-600 mb-4">
+        {pedido.envio === 0
+          ? "✅ Entregamos en tu zona – Envío GRATIS"
+          : `✅ Entregamos en tu zona – Envío $${pedido.envio}`}
+      </p>
 
       <div className="grid grid-cols-3 gap-3 mb-6">
         {opciones.map((kg) => (
           <button
             key={kg}
-            onClick={() => setPedido({ ...pedido, kilos: kg })}
+            onClick={() =>
+              setPedido((prev) => ({ ...prev, kilos: kg }))
+            }
             className={`py-3 rounded-xl border ${
               pedido.kilos === kg
                 ? "bg-[#7a5c3e] text-white"
@@ -222,7 +255,7 @@ function PasoKilos({
 
         <button
           onClick={next}
-          className="bg-[#7a5c3e] hover:bg-[#5f452f] text-white px-6 py-3 rounded-xl"
+          className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl"
         >
           Continuar
         </button>
@@ -235,20 +268,29 @@ function PasoKilos({
    PASO 3 – SALSAS
 ========================= */
 
+type Paso3Props = {
+  pedido: Pedido;
+  setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
+  next: () => void;
+  back: () => void;
+};
+
 function PasoSalsas({
   pedido,
   setPedido,
   next,
   back,
-}: any) {
+}: Paso3Props) {
 
-  const maxPorTipo = pedido.kilos * 3;
+  const max = pedido.kilos * 3;
 
-  const cambiar = (tipo: string, valor: number) => {
-    if (valor < 0) return;
-    if (valor > maxPorTipo) return;
+  const cambiar = (
+    tipo: "verde" | "roja" | "chilePasado",
+    valor: number
+  ) => {
+    if (valor < 0 || valor > max) return;
 
-    setPedido({ ...pedido, [tipo]: valor });
+    setPedido((prev) => ({ ...prev, [tipo]: valor }));
   };
 
   return (
@@ -256,10 +298,6 @@ function PasoSalsas({
       <h2 className="text-2xl font-semibold mb-6 text-center">
         Salsas (300ml)
       </h2>
-
-      <p className="text-sm text-neutral-500 mb-4 text-center">
-        Recomendamos 1 envase por kilo.
-      </p>
 
       {[
         { nombre: "Salsa Verde", key: "verde", precio: 50 },
@@ -277,18 +315,26 @@ function PasoSalsas({
           <div className="flex items-center gap-2">
             <button
               onClick={() =>
-                cambiar(salsa.key, pedido[salsa.key] - 1)
+                cambiar(
+                  salsa.key as "verde" | "roja" | "chilePasado",
+                  (pedido[salsa.key as keyof Pedido] as number) - 1
+                )
               }
               className="px-3 border rounded"
             >
               -
             </button>
 
-            <span>{pedido[salsa.key]}</span>
+            <span>
+              {pedido[salsa.key as keyof Pedido]}
+            </span>
 
             <button
               onClick={() =>
-                cambiar(salsa.key, pedido[salsa.key] + 1)
+                cambiar(
+                  salsa.key as "verde" | "roja" | "chilePasado",
+                  (pedido[salsa.key as keyof Pedido] as number) + 1
+                )
               }
               className="px-3 border rounded"
             >
@@ -305,7 +351,7 @@ function PasoSalsas({
 
         <button
           onClick={next}
-          className="bg-[#7a5c3e] hover:bg-[#5f452f] text-white px-6 py-3 rounded-xl"
+          className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl"
         >
           Continuar
         </button>
@@ -315,16 +361,22 @@ function PasoSalsas({
 }
 
 /* =========================
-   PASO 4 – FECHA
+   PASO 4
 ========================= */
+
+type Paso4Props = {
+  pedido: Pedido;
+  setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
+  next: () => void;
+  back: () => void;
+};
 
 function PasoFecha({
   pedido,
   setPedido,
   next,
   back,
-}: any) {
-
+}: Paso4Props) {
   return (
     <>
       <h2 className="text-2xl font-semibold mb-6 text-center">
@@ -335,7 +387,10 @@ function PasoFecha({
         type="date"
         value={pedido.fecha}
         onChange={(e) =>
-          setPedido({ ...pedido, fecha: e.target.value })
+          setPedido((prev) => ({
+            ...prev,
+            fecha: e.target.value,
+          }))
         }
         className="w-full border rounded-xl px-4 py-3 mb-6"
       />
@@ -344,10 +399,13 @@ function PasoFecha({
         <label className="block mb-2">
           <input
             type="radio"
-            name="ventana"
             value="9-12"
+            checked={pedido.ventana === "9-12"}
             onChange={(e) =>
-              setPedido({ ...pedido, ventana: e.target.value })
+              setPedido((prev) => ({
+                ...prev,
+                ventana: e.target.value,
+              }))
             }
           />{" "}
           9:00 – 12:00
@@ -356,10 +414,13 @@ function PasoFecha({
         <label>
           <input
             type="radio"
-            name="ventana"
             value="15-18"
+            checked={pedido.ventana === "15-18"}
             onChange={(e) =>
-              setPedido({ ...pedido, ventana: e.target.value })
+              setPedido((prev) => ({
+                ...prev,
+                ventana: e.target.value,
+              }))
             }
           />{" "}
           15:00 – 18:00
@@ -373,7 +434,7 @@ function PasoFecha({
 
         <button
           onClick={next}
-          className="bg-[#7a5c3e] hover:bg-[#5f452f] text-white px-6 py-3 rounded-xl"
+          className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl"
         >
           Continuar
         </button>
@@ -383,39 +444,32 @@ function PasoFecha({
 }
 
 /* =========================
-   PASO 5 – CONFIRMAR
+   PASO 5
 ========================= */
 
 function PasoConfirmacion({
-  pedido,
   total,
   back,
-}: any) {
-
+}: {
+  total: number;
+  back: () => void;
+}) {
   return (
     <>
       <h2 className="text-2xl font-semibold mb-6 text-center">
         Confirmar pedido
       </h2>
 
-      <div className="text-sm space-y-2 mb-6">
-        <p>Kilos: {pedido.kilos}</p>
-        <p>Salsa Verde: {pedido.verde}</p>
-        <p>Salsa Roja: {pedido.roja}</p>
-        <p>Chile Pasado: {pedido.chilePasado}</p>
-        <p>Envío: ${pedido.envio}</p>
-        <hr />
-        <p className="font-semibold">
-          Total (IVA incluido): ${total}
-        </p>
-      </div>
+      <p className="text-center mb-6">
+        Total a pagar: ${total}
+      </p>
 
       <div className="flex justify-between">
         <button onClick={back} className="text-neutral-500">
           Atrás
         </button>
 
-        <button className="bg-[#7a5c3e] hover:bg-[#5f452f] text-white px-6 py-3 rounded-xl">
+        <button className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl">
           Pagar ahora
         </button>
       </div>
