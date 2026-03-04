@@ -26,11 +26,34 @@ type Precios = {
   chilePasado: number;
 };
 
+type ProductoAPI = {
+  nombre: string;
+  presentacion: string;
+  precio: number;
+};
+
+type ValidateZoneResponse = {
+  success: boolean;
+  envio: number;
+};
+
+type MaxInventoryResponse = {
+  success: boolean;
+  maxKilos: number;
+};
+
+type CheckoutResponse = {
+  success: boolean;
+  url?: string;
+  message?: string;
+};
+
 /* =========================
 PAGE
 ========================= */
 
 export default function PedidoPage() {
+
   const router = useRouter();
 
   const [step, setStep] = useState(1);
@@ -60,31 +83,25 @@ export default function PedidoPage() {
   ========================= */
 
   const cargarProductos = async () => {
+
     const res = await fetch("/api/productos");
-    const data = await res.json();
+    const data = await res.json() as { success: boolean; productos: ProductoAPI[] };
 
-    if (data.success) {
-      const lista = data.productos;
+    if (!data.success) return;
 
-      setPrecios({
-        barbacoa:
-          lista.find((p: { nombre: string }) => p.nombre === "Barbacoa")
-            ?.precio || 0,
-        verde:
-          lista.find((p: { nombre: string }) => p.nombre === "Salsa Verde")
-            ?.precio || 0,
-        roja:
-          lista.find((p: { nombre: string }) => p.nombre === "Salsa Roja")
-            ?.precio || 0,
-        chilePasado:
-          lista.find(
-            (p: { nombre: string }) =>
-              p.nombre === "Salsa de Chile Pasado"
-          )?.precio || 0,
-      });
+    const lista = data.productos;
 
-      setProductosCargados(true);
-    }
+    const buscar = (nombre: string) =>
+      lista.find(p => p.nombre === nombre)?.precio || 0;
+
+    setPrecios({
+      barbacoa: buscar("Barbacoa"),
+      verde: buscar("Salsa Verde"),
+      roja: buscar("Salsa Roja"),
+      chilePasado: buscar("Salsa de Chile Pasado"),
+    });
+
+    setProductosCargados(true);
   };
 
   /* =========================
@@ -100,11 +117,12 @@ export default function PedidoPage() {
 
   const total = totalBarbacoa + totalSalsas + pedido.envio;
 
-  const next = () => setStep((s) => s + 1);
-  const back = () => setStep((s) => s - 1);
+  const next = () => setStep(s => s + 1);
+  const back = () => setStep(s => s - 1);
 
   return (
     <main className="min-h-screen bg-[#f5f1e8] flex items-center justify-center px-4 py-12">
+
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8">
 
         <div className="text-sm text-neutral-500 mb-6 text-center">
@@ -158,17 +176,22 @@ export default function PedidoPage() {
 
         {step > 1 && (
           <div className="mt-8 pt-6 border-t text-sm space-y-1">
+
             <p>Barbacoa: ${totalBarbacoa}</p>
             <p>Salsas: ${totalSalsas}</p>
             <p>Envío: ${pedido.envio}</p>
+
             <hr />
+
             <p className="font-semibold">
               Total (IVA incluido): ${total}
             </p>
+
           </div>
         )}
 
       </div>
+
     </main>
   );
 }
@@ -193,34 +216,37 @@ function PasoCodigoPostal({
   const [mensaje, setMensaje] = useState("");
 
   const validar = async () => {
+
     const res = await fetch("/api/validate-zone", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
-      body: JSON.stringify({ cp: cpInput }),
+      body: JSON.stringify({ cp: cpInput })
     });
 
-    const data = await res.json();
+    const data = await res.json() as ValidateZoneResponse;
 
-    if (data.success) {
-      setPedido((prev) => ({
-        ...prev,
-        cp: cpInput,
-        envio: data.envio,
-      }));
-
-      setMensaje(
-        data.envio === 0
-          ? "✅ Entregamos en tu zona – Envío GRATIS"
-          : `✅ Entregamos en tu zona – Envío $${data.envio}`
-      );
-
-      await cargarProductos();
-      next();
-    } else {
+    if (!data.success) {
       setMensaje("Aún no entregamos en tu zona.");
+      return;
     }
+
+    setPedido(prev => ({
+      ...prev,
+      cp: cpInput,
+      envio: data.envio,
+    }));
+
+    setMensaje(
+      data.envio === 0
+        ? "✅ Entregamos en tu zona – Envío GRATIS"
+        : `✅ Entregamos en tu zona – Envío $${data.envio}`
+    );
+
+    await cargarProductos();
+
+    next();
   };
 
   return (
@@ -278,17 +304,11 @@ function PasoKilos({
 
     const consultarInventario = async () => {
 
-      try {
+      const res = await fetch("/api/max-inventory");
+      const data = await res.json() as MaxInventoryResponse;
 
-        const res = await fetch("/api/max-inventory");
-        const data = await res.json();
-
-        if (data.success) {
-          setMaxKilos(data.maxKilos);
-        }
-
-      } catch (err) {
-        console.error("Error consultando inventario", err);
+      if (data.success) {
+        setMaxKilos(data.maxKilos);
       }
 
     };
@@ -297,11 +317,8 @@ function PasoKilos({
 
   }, []);
 
-  const todasOpciones = [1, 1.5, 2, 2.5, 3, 3.5, 4];
-
-  const opciones = todasOpciones.filter(
-    (kg) => kg <= maxKilos
-  );
+  const todasOpciones = [1,1.5,2,2.5,3,3.5,4];
+  const opciones = todasOpciones.filter(k => k <= maxKilos);
 
   return (
     <>
@@ -317,12 +334,12 @@ function PasoKilos({
 
       <div className="grid grid-cols-3 gap-3 mb-6">
 
-        {opciones.map((kg) => (
+        {opciones.map(kg => (
 
           <button
             key={kg}
             onClick={() =>
-              setPedido((prev) => {
+              setPedido(prev => {
 
                 const maxSalsas = kg * 3;
 
@@ -343,7 +360,6 @@ function PasoKilos({
             }`}
           >
             {kg} kg
-
           </button>
 
         ))}
@@ -379,6 +395,8 @@ function PasoKilos({
 PASO 3
 ========================= */
 
+type SalsaKey = "verde" | "roja" | "chilePasado";
+
 type Paso3Props = {
   pedido: Pedido;
   setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
@@ -397,15 +415,20 @@ function PasoSalsas({
 
   const max = pedido.kilos * 3;
 
-  const cambiar = (
-    tipo: "verde" | "roja" | "chilePasado",
-    valor: number
-  ) => {
+  const cambiar = (tipo: SalsaKey, valor: number) => {
+
     if (valor < 0) return;
     if (valor > max) valor = max;
 
-    setPedido((prev) => ({ ...prev, [tipo]: valor }));
+    setPedido(prev => ({ ...prev, [tipo]: valor }));
+
   };
+
+  const salsas = [
+    { nombre:"Salsa Verde", key:"verde" as SalsaKey, precio:precios.verde },
+    { nombre:"Salsa Roja", key:"roja" as SalsaKey, precio:precios.roja },
+    { nombre:"Salsa de Chile Pasado", key:"chilePasado" as SalsaKey, precio:precios.chilePasado },
+  ];
 
   return (
     <>
@@ -413,49 +436,41 @@ function PasoSalsas({
         Salsas (300ml)
       </h2>
 
-      {[
-        { nombre: "Salsa Verde", key: "verde", precio: precios.verde },
-        { nombre: "Salsa Roja", key: "roja", precio: precios.roja },
-        { nombre: "Salsa de Chile Pasado", key: "chilePasado", precio: precios.chilePasado },
-      ].map((salsa) => (
-        <div key={salsa.key} className="flex justify-between mb-4">
+      {salsas.map(salsa => {
 
-          <div>
-            <p>{salsa.nombre}</p>
-            <p className="text-sm">${salsa.precio}</p>
-          </div>
+        const value = pedido[salsa.key];
 
-          <div className="flex gap-2 items-center">
+        return (
 
-            <button
-              onClick={() =>
-                cambiar(
-                  salsa.key as "verde" | "roja" | "chilePasado",
-                  (pedido[salsa.key as keyof Pedido] as number) - 1
-                )
-              }
-            >
-              -
-            </button>
+          <div key={salsa.key} className="flex justify-between mb-4">
 
-            <span>{pedido[salsa.key as keyof Pedido]}</span>
+            <div>
+              <p>{salsa.nombre}</p>
+              <p className="text-sm">${salsa.precio}</p>
+            </div>
 
-            <button
-              onClick={() =>
-                cambiar(
-                  salsa.key as "verde" | "roja" | "chilePasado",
-                  (pedido[salsa.key as keyof Pedido] as number) + 1
-                )
-              }
-            >
-              +
-            </button>
+            <div className="flex gap-2 items-center">
+
+              <button onClick={()=>cambiar(salsa.key,value-1)}>
+                -
+              </button>
+
+              <span>{value}</span>
+
+              <button onClick={()=>cambiar(salsa.key,value+1)}>
+                +
+              </button>
+
+            </div>
 
           </div>
-        </div>
-      ))}
+
+        );
+
+      })}
 
       <div className="flex justify-between">
+
         <button onClick={back}>Atrás</button>
 
         <button
@@ -464,6 +479,7 @@ function PasoSalsas({
         >
           Continuar
         </button>
+
       </div>
     </>
   );
@@ -496,10 +512,10 @@ function PasoFecha({
       <input
         type="date"
         value={pedido.fecha}
-        onChange={(e) =>
-          setPedido((prev) => ({
+        onChange={(e)=>
+          setPedido(prev=>({
             ...prev,
-            fecha: e.target.value,
+            fecha:e.target.value
           }))
         }
         className="w-full border rounded-xl px-4 py-3 mb-6"
@@ -508,39 +524,48 @@ function PasoFecha({
       <div className="mb-6">
 
         <label className="block mb-2">
+
           <input
             type="radio"
             value="9-12"
-            checked={pedido.ventana === "9-12"}
-            onChange={(e) =>
-              setPedido((prev) => ({
+            checked={pedido.ventana==="9-12"}
+            onChange={(e)=>
+              setPedido(prev=>({
                 ...prev,
-                ventana: e.target.value,
+                ventana:e.target.value
               }))
             }
           />
+
           9:00 – 12:00
+
         </label>
 
         <label>
+
           <input
             type="radio"
             value="15-18"
-            checked={pedido.ventana === "15-18"}
-            onChange={(e) =>
-              setPedido((prev) => ({
+            checked={pedido.ventana==="15-18"}
+            onChange={(e)=>
+              setPedido(prev=>({
                 ...prev,
-                ventana: e.target.value,
+                ventana:e.target.value
               }))
             }
           />
+
           15:00 – 18:00
+
         </label>
 
       </div>
 
       <div className="flex justify-between">
-        <button onClick={back}>Atrás</button>
+
+        <button onClick={back}>
+          Atrás
+        </button>
 
         <button
           onClick={next}
@@ -548,6 +573,7 @@ function PasoFecha({
         >
           Continuar
         </button>
+
       </div>
     </>
   );
@@ -567,7 +593,7 @@ function PasoConfirmacion({
   back: () => void;
 }) {
 
-  const [loading, setLoading] = useState(false);
+  const [loading,setLoading]=useState(false);
 
   const pagar = async () => {
 
@@ -575,23 +601,23 @@ function PasoConfirmacion({
 
       setLoading(true);
 
-      const res = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(pedido)
+      const res = await fetch("/api/create-checkout-session",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body:JSON.stringify(pedido)
       });
 
-      const data = await res.json();
+      const data = await res.json() as CheckoutResponse;
 
-      if (!data.success) {
+      if(!data.success){
         alert(data.message || "Error creando pago");
         setLoading(false);
         return;
       }
 
-      window.location.href = data.url;
+      if(data.url){
+        window.location.href = data.url;
+      }
 
     } catch (error) {
 
