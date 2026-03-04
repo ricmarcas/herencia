@@ -150,6 +150,7 @@ export default function PedidoPage() {
 
         {step === 5 && (
           <PasoConfirmacion
+            pedido={pedido}
             total={total}
             back={back}
           />
@@ -557,12 +558,50 @@ PASO 5
 ========================= */
 
 function PasoConfirmacion({
+  pedido,
   total,
   back,
 }: {
+  pedido: Pedido;
   total: number;
   back: () => void;
 }) {
+
+  const [loading, setLoading] = useState(false);
+
+  const pagar = async () => {
+
+    try {
+
+      setLoading(true);
+
+      const res = await fetch("/api/create-checkout-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(pedido)
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        alert(data.message || "Error creando pago");
+        setLoading(false);
+        return;
+      }
+
+      window.location.href = data.url;
+
+    } catch (error) {
+
+      console.error(error);
+      alert("Error conectando con Stripe");
+      setLoading(false);
+
+    }
+
+  };
 
   return (
     <>
@@ -580,8 +619,12 @@ function PasoConfirmacion({
           Atrás
         </button>
 
-        <button className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl">
-          Pagar ahora
+        <button
+          onClick={pagar}
+          disabled={loading}
+          className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl"
+        >
+          {loading ? "Procesando..." : "Pagar ahora"}
         </button>
 
       </div>
