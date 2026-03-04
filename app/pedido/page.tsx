@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
@@ -17,6 +17,13 @@ type Pedido = {
   chilePasado: number;
   fecha: string;
   ventana: string;
+};
+
+type Precios = {
+  barbacoa: number;
+  verde: number;
+  roja: number;
+  chilePasado: number;
 };
 
 /* =========================
@@ -39,11 +46,72 @@ export default function PedidoPage() {
     ventana: "",
   });
 
-  const totalBarbacoa = pedido.kilos * 580;
+  const [precios, setPrecios] = useState<Precios>({
+    barbacoa: 0,
+    verde: 0,
+    roja: 0,
+    chilePasado: 0,
+  });
+
+  const [loadingPrecios, setLoadingPrecios] = useState<boolean>(true);
+
+  /* =========================
+     Cargar productos dinámicos
+  ========================== */
+
+  useEffect(() => {
+    const cargarProductos = async () => {
+      try {
+        const res = await fetch("/api/productos");
+        const data = await res.json();
+
+        if (data.success) {
+          const lista = data.productos;
+
+          setPrecios({
+            barbacoa:
+              lista.find((p: { nombre: string }) => p.nombre === "Barbacoa")
+                ?.precio || 0,
+            verde:
+              lista.find((p: { nombre: string }) => p.nombre === "Salsa Verde")
+                ?.precio || 0,
+            roja:
+              lista.find((p: { nombre: string }) => p.nombre === "Salsa Roja")
+                ?.precio || 0,
+            chilePasado:
+              lista.find(
+                (p: { nombre: string }) =>
+                  p.nombre === "Salsa de Chile Pasado"
+              )?.precio || 0,
+          });
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoadingPrecios(false);
+      }
+    };
+
+    cargarProductos();
+  }, []);
+
+  if (loadingPrecios) {
+    return (
+      <main className="min-h-screen flex items-center justify-center">
+        <p>Cargando productos...</p>
+      </main>
+    );
+  }
+
+  /* =========================
+     Totales dinámicos
+  ========================== */
+
+  const totalBarbacoa = pedido.kilos * precios.barbacoa;
   const totalSalsas =
-    pedido.verde * 50 +
-    pedido.roja * 50 +
-    pedido.chilePasado * 80;
+    pedido.verde * precios.verde +
+    pedido.roja * precios.roja +
+    pedido.chilePasado * precios.chilePasado;
 
   const total = totalBarbacoa + totalSalsas + pedido.envio;
 
@@ -59,10 +127,7 @@ export default function PedidoPage() {
         </div>
 
         {step === 1 && (
-          <PasoCodigoPostal
-            setPedido={setPedido}
-            next={next}
-          />
+          <PasoCodigoPostal setPedido={setPedido} next={next} />
         )}
 
         {step === 2 && (
@@ -81,6 +146,7 @@ export default function PedidoPage() {
             setPedido={setPedido}
             next={next}
             back={back}
+            precios={precios}
           />
         )}
 
@@ -94,13 +160,10 @@ export default function PedidoPage() {
         )}
 
         {step === 5 && (
-          <PasoConfirmacion
-            total={total}
-            back={back}
-          />
+          <PasoConfirmacion total={total} back={back} />
         )}
 
-        {/* RESUMEN DINÁMICO (NO EN PASO 1) */}
+        {/* RESUMEN (no en paso 1) */}
         {step > 1 && (
           <div className="mt-8 pt-6 border-t text-sm space-y-1">
             <p>Barbacoa: ${totalBarbacoa}</p>
@@ -155,9 +218,7 @@ function PasoCodigoPostal({ setPedido, next }: Paso1Props) {
 
       setTimeout(() => next(), 800);
     } else {
-      setMensaje(
-        "Aún no entregamos en tu zona. Próximamente formulario especial."
-      );
+      setMensaje("Aún no entregamos en tu zona.");
     }
   };
 
@@ -232,7 +293,6 @@ function PasoKilos({
             onClick={() =>
               setPedido((prev) => {
                 const nuevoMax = kg * 3;
-
                 return {
                   ...prev,
                   kilos: kg,
@@ -257,7 +317,7 @@ function PasoKilos({
         onClick={() => router.push("/pedido-especial")}
         className="text-sm text-[#7a5c3e] underline mb-6 block text-center"
       >
-        ¿Más de 4 kg? Pedido especial para eventos
+        ¿Más de 4 kg? Pedido especial
       </button>
 
       <div className="flex justify-between">
@@ -285,6 +345,7 @@ type Paso3Props = {
   setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
   next: () => void;
   back: () => void;
+  precios: Precios;
 };
 
 function PasoSalsas({
@@ -292,6 +353,7 @@ function PasoSalsas({
   setPedido,
   next,
   back,
+  precios,
 }: Paso3Props) {
 
   const max = pedido.kilos * 3;
@@ -301,10 +363,7 @@ function PasoSalsas({
     valor: number
   ) => {
     if (valor < 0) return;
-
-    if (valor > max) {
-      valor = max;
-    }
+    if (valor > max) valor = max;
 
     setPedido((prev) => ({ ...prev, [tipo]: valor }));
   };
@@ -316,16 +375,14 @@ function PasoSalsas({
       </h2>
 
       {[
-        { nombre: "Salsa Verde", key: "verde", precio: 50 },
-        { nombre: "Salsa Roja", key: "roja", precio: 50 },
-        { nombre: "Salsa de Chile Pasado", key: "chilePasado", precio: 80 },
+        { nombre: "Salsa Verde", key: "verde", precio: precios.verde },
+        { nombre: "Salsa Roja", key: "roja", precio: precios.roja },
+        { nombre: "Salsa de Chile Pasado", key: "chilePasado", precio: precios.chilePasado },
       ].map((salsa) => (
         <div key={salsa.key} className="flex justify-between items-center mb-4">
           <div>
             <p>{salsa.nombre}</p>
-            <p className="text-sm text-neutral-500">
-              ${salsa.precio}
-            </p>
+            <p className="text-sm text-neutral-500">${salsa.precio}</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -341,9 +398,7 @@ function PasoSalsas({
               -
             </button>
 
-            <span>
-              {pedido[salsa.key as keyof Pedido]}
-            </span>
+            <span>{pedido[salsa.key as keyof Pedido]}</span>
 
             <button
               onClick={() =>
@@ -377,7 +432,7 @@ function PasoSalsas({
 }
 
 /* =========================
-   PASO 4
+   PASO 4 – FECHA
 ========================= */
 
 type Paso4Props = {
