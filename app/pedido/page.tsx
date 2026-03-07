@@ -1,801 +1,232 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import { CheckoutHeader } from "@/components/CheckoutHeader";
+import { DeliveryDate } from "@/components/DeliveryDate";
+import { OrderSummary } from "@/components/OrderSummary";
+import { ProductSelector } from "@/components/ProductSelector";
+import { SauceSelector } from "@/components/SauceSelector";
+import { useCheckout } from "@/features/checkout/useCheckout";
 
-/* =========================
-TIPOS
-========================= */
-
-type Pedido = {
-  cp: string;
-  envio: number;
-  kilos: number;
-  verde: number;
-  roja: number;
-  chilePasado: number;
-  fecha: string;
-  ventana: string;
-};
-
-type Precios = {
-  barbacoa: number;
-  verde: number;
-  roja: number;
-  chilePasado: number;
-};
-
-type ProductoAPI = {
-  nombre: string;
-  presentacion: string;
-  precio: number;
-};
-
-type ValidateZoneResponse = {
-  success: boolean;
-  envio: number;
-};
-
-type MaxInventoryResponse = {
-  success: boolean;
-  maxKilos: number;
-};
-
-type CheckoutResponse = {
-  success: boolean;
-  url?: string;
-  message?: string;
-};
-
-/* =========================
-HEADER ETAPAS
-========================= */
-
-function Etapas({ step }: { step: number }) {
-
-  const etapa = step <= 4 ? 1 : step === 5 ? 2 : 3;
-
-  return (
-    <div className="flex justify-between mb-6 text-xs text-center">
-
-      <div className="flex-1">
-        <div className={`h-2 rounded ${etapa >= 1 ? "bg-[#7a5c3e]" : "bg-gray-200"}`} />
-        <p className="mt-1">Orden</p>
-      </div>
-
-      <div className="flex-1 mx-2">
-        <div className={`h-2 rounded ${etapa >= 2 ? "bg-[#7a5c3e]" : "bg-gray-200"}`} />
-        <p className="mt-1">Envío</p>
-      </div>
-
-      <div className="flex-1">
-        <div className={`h-2 rounded ${etapa >= 3 ? "bg-[#7a5c3e]" : "bg-gray-200"}`} />
-        <p className="mt-1">Pago</p>
-      </div>
-
-    </div>
-  );
-}
-
-/* =========================
-PAGE
-========================= */
-
-export default function PedidoPage() {
-
-  const router = useRouter();
-
-  const [step, setStep] = useState(1);
-
-  const [pedido, setPedido] = useState<Pedido>({
-    cp: "",
-    envio: 0,
-    kilos: 1,
-    verde: 0,
-    roja: 0,
-    chilePasado: 0,
-    fecha: "",
-    ventana: "",
-  });
-
-  const [precios, setPrecios] = useState<Precios>({
-    barbacoa: 0,
-    verde: 0,
-    roja: 0,
-    chilePasado: 0,
-  });
-
-  const [productosCargados, setProductosCargados] = useState(false);
-
-  /* =========================
-  CARGAR PRODUCTOS
-  ========================= */
-
-  const cargarProductos = async () => {
-
-    const res = await fetch("/api/productos");
-
-    const data = await res.json() as { success: boolean; productos: ProductoAPI[] };
-
-    if (!data.success) return;
-
-    const lista = data.productos;
-
-    const buscar = (nombre: string) =>
-      lista.find(p => p.nombre === nombre)?.precio || 0;
-
-    setPrecios({
-      barbacoa: buscar("Barbacoa"),
-      verde: buscar("Salsa Verde"),
-      roja: buscar("Salsa Roja"),
-      chilePasado: buscar("Salsa de Chile Pasado"),
-    });
-
-    setProductosCargados(true);
-
-  };
-
-  /* =========================
-  TOTALES
-  ========================= */
-
-  const totalBarbacoa = pedido.kilos * precios.barbacoa;
-
-  const totalSalsas =
-    pedido.verde * precios.verde +
-    pedido.roja * precios.roja +
-    pedido.chilePasado * precios.chilePasado;
-
-  const total = totalBarbacoa + totalSalsas + pedido.envio;
-
-  const next = () => setStep(s => s + 1);
-  const back = () => setStep(s => s - 1);
-
-  return (
-
-    <main className="min-h-screen bg-[#f5f1e8] flex items-center justify-center px-4 py-12">
-
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8">
-
-        <Etapas step={step} />
-
-        <div className="text-sm text-neutral-500 mb-6 text-center">
-          Paso {step} de 7
-        </div>
-
-        {step === 1 && (
-          <PasoCodigoPostal
-            setPedido={setPedido}
-            next={next}
-            cargarProductos={cargarProductos}
-          />
-        )}
-
-        {step === 2 && productosCargados && (
-          <PasoKilos
-            pedido={pedido}
-            setPedido={setPedido}
-            next={next}
-            back={back}
-            router={router}
-          />
-        )}
-
-        {step === 3 && (
-          <PasoSalsas
-            pedido={pedido}
-            setPedido={setPedido}
-            next={next}
-            back={back}
-            precios={precios}
-          />
-        )}
-
-        {step === 4 && (
-          <PasoFecha
-            pedido={pedido}
-            setPedido={setPedido}
-            next={next}
-            back={back}
-          />
-        )}
-
-        {step === 5 && (
-          <PasoConfirmacion
-            total={total}
-            next={next}
-            back={back}
-          />
-        )}
-
-        {step === 6 && (
-          <PasoEnvio
-            pedido={pedido}
-            setPedido={setPedido}
-            next={next}
-            back={back}
-          />
-        )}
-
-        {step === 7 && (
-          <PasoPago
-            pedido={pedido}
-            total={total}
-            back={back}
-          />
-        )}
-
-        {step > 1 && (
-          <div className="mt-8 pt-6 border-t text-sm space-y-1">
-
-            <p>Barbacoa: ${totalBarbacoa}</p>
-            <p>Salsas: ${totalSalsas}</p>
-            <p>Envío: ${pedido.envio}</p>
-
-            <hr />
-
-            <p className="font-semibold">
-              Total (IVA incluido): ${total}
-            </p>
-
-          </div>
-        )}
-
-      </div>
-
-    </main>
-
-  );
-
-}
-
-/* =========================
-PASO 1
-========================= */
-
-function PasoCodigoPostal({
-  setPedido,
-  next,
-  cargarProductos,
+function PostalCodeStep({
+  onValidate,
+  isLoading,
+  message,
 }: {
-  setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
-  next: () => void;
-  cargarProductos: () => Promise<void>;
+  onValidate: (cp: string) => Promise<boolean>;
+  isLoading: boolean;
+  message: string;
 }) {
-
-  const [cpInput, setCpInput] = useState("");
-  const [mensaje, setMensaje] = useState("");
-
-  const validar = async () => {
-
-    const res = await fetch("/api/validate-zone", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cp: cpInput })
-    });
-
-    const data = await res.json() as ValidateZoneResponse;
-
-    if (!data.success) {
-      setMensaje("Aún no entregamos en tu zona.");
-      return;
-    }
-
-    setPedido(prev => ({
-      ...prev,
-      cp: cpInput,
-      envio: data.envio,
-    }));
-
-    setMensaje(
-      data.envio === 0
-        ? "✅ Entregamos en tu zona – Envío GRATIS"
-        : `✅ Entregamos en tu zona – Envío $${data.envio}`
-    );
-
-    await cargarProductos();
-
-    next();
-
-  };
+  const [cp, setCp] = useState("");
 
   return (
     <>
-      <h2 className="text-2xl font-semibold mb-6 text-center">
-        Código Postal
-      </h2>
+      <h2 className="mb-6 text-center text-2xl font-semibold">Codigo Postal</h2>
 
       <input
-        value={cpInput}
-        onChange={(e) => setCpInput(e.target.value)}
+        value={cp}
+        onChange={(event) => setCp(event.target.value)}
         placeholder="Ej. 03020"
-        className="w-full border rounded-xl px-4 py-3 mb-6"
+        className="mb-6 w-full rounded-xl border px-4 py-3"
       />
 
       <button
-        onClick={validar}
-        className="w-full bg-[#7a5c3e] text-white py-3 rounded-xl"
+        type="button"
+        onClick={() => onValidate(cp)}
+        disabled={isLoading || cp.trim().length === 0}
+        className="w-full rounded-xl bg-[#7a5c3e] py-3 text-white disabled:cursor-not-allowed disabled:opacity-60"
       >
-        Validar zona
+        {isLoading ? "Validando..." : "Validar zona"}
       </button>
 
-      {mensaje && (
-        <p className="mt-4 text-center text-sm text-neutral-600">
-          {mensaje}
-        </p>
-      )}
+      {message ? <p className="mt-4 text-center text-sm text-neutral-600">{message}</p> : null}
     </>
   );
 }
 
-/* =========================
-PASO 2
-========================= */
-
-function PasoKilos({
-  pedido,
-  setPedido,
-  next,
-  back,
-  router,
-}: {
-  pedido: Pedido;
-  setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
-  next: () => void;
-  back: () => void;
-  router: AppRouterInstance;
-}) {
-
-  const [maxKilos, setMaxKilos] = useState<number>(4);
-
-  useEffect(() => {
-
-    const consultarInventario = async () => {
-
-      const res = await fetch("/api/max-inventory");
-
-      const data = await res.json() as MaxInventoryResponse;
-
-      if (data.success) {
-        setMaxKilos(data.maxKilos);
-      }
-
-    };
-
-    consultarInventario();
-
-  }, []);
-
-  const todasOpciones = [1,1.5,2,2.5,3,3.5,4];
-  const opciones = todasOpciones.filter(k => k <= maxKilos);
-
+function ConfirmationStep({ total, onBack, onNext }: { total: number; onBack: () => void; onNext: () => void }) {
   return (
     <>
-      <h2 className="text-2xl font-semibold mb-4 text-center">
-        Selecciona kilos
-      </h2>
-
-      <p className="text-sm text-center text-neutral-600 mb-4">
-        {pedido.envio === 0
-          ? "Envío GRATIS"
-          : `Envío $${pedido.envio}`}
-      </p>
-
-      <div className="grid grid-cols-3 gap-3 mb-6">
-
-        {opciones.map(kg => (
-
-          <button
-            key={kg}
-            onClick={() =>
-              setPedido(prev => {
-
-                const maxSalsas = kg * 3;
-
-                return {
-                  ...prev,
-                  kilos: kg,
-                  verde: Math.min(prev.verde, maxSalsas),
-                  roja: Math.min(prev.roja, maxSalsas),
-                  chilePasado: Math.min(prev.chilePasado, maxSalsas),
-                };
-
-              })
-            }
-            className={`py-3 rounded-xl border ${
-              pedido.kilos === kg
-                ? "bg-[#7a5c3e] text-white"
-                : ""
-            }`}
-          >
-            {kg} kg
-          </button>
-
-        ))}
-
-      </div>
-
-      <button
-        onClick={() => router.push("/pedido-especial")}
-        className="text-sm underline mb-6"
-      >
-        ¿Más de 4 kg? Pedido especial
-      </button>
+      <h2 className="mb-6 text-center text-2xl font-semibold">Confirmar pedido</h2>
+      <p className="mb-6 text-center">Total a pagar: ${total}</p>
 
       <div className="flex justify-between">
-
-        <button onClick={back}>
-          Atrás
+        <button type="button" onClick={onBack}>
+          Atras
         </button>
 
-        <button
-          onClick={next}
-          className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl"
-        >
+        <button type="button" onClick={onNext} className="rounded-xl bg-[#7a5c3e] px-6 py-3 text-white">
           Continuar
         </button>
-
       </div>
-
     </>
   );
 }
 
-/* =========================
-PASO 3
-========================= */
-
-type SalsaKey = "verde" | "roja" | "chilePasado";
-
-function PasoSalsas({
-  pedido,
-  setPedido,
-  next,
-  back,
-  precios,
+function ShippingStep({
+  telefono,
+  direccion,
+  onTelefonoChange,
+  onDireccionChange,
+  onBack,
+  onNext,
 }: {
-  pedido: Pedido;
-  setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
-  next: () => void;
-  back: () => void;
-  precios: Precios;
+  telefono: string;
+  direccion: string;
+  onTelefonoChange: (value: string) => void;
+  onDireccionChange: (value: string) => void;
+  onBack: () => void;
+  onNext: () => void;
 }) {
-
-  const max = pedido.kilos * 3;
-
-  const cambiar = (tipo: SalsaKey, valor: number) => {
-
-    if (valor < 0) return;
-    if (valor > max) valor = max;
-
-    setPedido(prev => ({ ...prev, [tipo]: valor }));
-
-  };
-
-  const salsas = [
-
-    { nombre:"Salsa Verde", key:"verde" as SalsaKey, precio:precios.verde },
-    { nombre:"Salsa Roja", key:"roja" as SalsaKey, precio:precios.roja },
-    { nombre:"Salsa de Chile Pasado", key:"chilePasado" as SalsaKey, precio:precios.chilePasado },
-
-  ];
-
   return (
     <>
-      <h2 className="text-2xl font-semibold mb-6 text-center">
-        Salsas (300ml)
-      </h2>
-
-      {salsas.map(salsa => {
-
-        const value = pedido[salsa.key];
-
-        return (
-
-          <div key={salsa.key} className="flex justify-between mb-4">
-
-            <div>
-              <p>{salsa.nombre}</p>
-              <p className="text-sm">${salsa.precio}</p>
-            </div>
-
-            <div className="flex gap-2 items-center">
-
-              <button onClick={()=>cambiar(salsa.key,value-1)}>
-                -
-              </button>
-
-              <span>{value}</span>
-
-              <button onClick={()=>cambiar(salsa.key,value+1)}>
-                +
-              </button>
-
-            </div>
-
-          </div>
-
-        );
-
-      })}
-
-      <div className="flex justify-between">
-
-        <button onClick={back}>Atrás</button>
-
-        <button
-          onClick={next}
-          className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl"
-        >
-          Continuar
-        </button>
-
-      </div>
-
-    </>
-  );
-}
-
-/* =========================
-PASO 4
-========================= */
-
-function PasoFecha({
-  pedido,
-  setPedido,
-  next,
-  back,
-}: {
-  pedido: Pedido;
-  setPedido: React.Dispatch<React.SetStateAction<Pedido>>;
-  next: () => void;
-  back: () => void;
-}) {
-
-  return (
-    <>
-      <h2 className="text-2xl font-semibold mb-6 text-center">
-        Fecha de entrega
-      </h2>
+      <h2 className="mb-6 text-center text-2xl font-semibold">Datos de entrega</h2>
 
       <input
-        type="date"
-        value={pedido.fecha}
-        onChange={(e)=>
-          setPedido(prev=>({
-            ...prev,
-            fecha:e.target.value
-          }))
-        }
-        className="w-full border rounded-xl px-4 py-3 mb-6"
-      />
-
-      <div className="mb-6">
-
-        <label className="block mb-2">
-
-          <input
-            type="radio"
-            value="9-12"
-            checked={pedido.ventana==="9-12"}
-            onChange={(e)=>
-              setPedido(prev=>({
-                ...prev,
-                ventana:e.target.value
-              }))
-            }
-          />
-
-          9:00 – 12:00
-
-        </label>
-
-        <label>
-
-          <input
-            type="radio"
-            value="15-18"
-            checked={pedido.ventana==="15-18"}
-            onChange={(e)=>
-              setPedido(prev=>({
-                ...prev,
-                ventana:e.target.value
-              }))
-            }
-          />
-
-          15:00 – 18:00
-
-        </label>
-
-      </div>
-
-      <div className="flex justify-between">
-
-        <button onClick={back}>
-          Atrás
-        </button>
-
-        <button
-          onClick={next}
-          className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl"
-        >
-          Continuar
-        </button>
-
-      </div>
-
-    </>
-  );
-}
-
-/* =========================
-PASO 5
-========================= */
-
-function PasoConfirmacion({
-  total,
-  next,
-  back,
-}: {
-  total: number;
-  next: () => void;
-  back: () => void;
-}) {
-
-  return (
-    <>
-      <h2 className="text-2xl font-semibold mb-6 text-center">
-        Confirmar pedido
-      </h2>
-
-      <p className="text-center mb-6">
-        Total a pagar: ${total}
-      </p>
-
-      <div className="flex justify-between">
-
-        <button onClick={back}>
-          Atrás
-        </button>
-
-        <button
-          onClick={next}
-          className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl"
-        >
-          Continuar
-        </button>
-
-      </div>
-
-    </>
-  );
-}
-
-/* =========================
-PASO 6
-========================= */
-
-function PasoEnvio({
-  next,
-  back
-}: {
-  pedido: Pedido
-  setPedido: React.Dispatch<React.SetStateAction<Pedido>>
-  next: () => void
-  back: () => void
-}) {
-
-  return (
-    <>
-      <h2 className="text-2xl font-semibold mb-6 text-center">
-        Datos de entrega
-      </h2>
-
-      <input
-        placeholder="Teléfono"
-        className="w-full border rounded-xl px-4 py-3 mb-4"
+        value={telefono}
+        onChange={(event) => onTelefonoChange(event.target.value)}
+        placeholder="Telefono"
+        className="mb-4 w-full rounded-xl border px-4 py-3"
       />
 
       <textarea
-        placeholder="Dirección completa"
-        className="w-full border rounded-xl px-4 py-3 mb-6"
+        value={direccion}
+        onChange={(event) => onDireccionChange(event.target.value)}
+        placeholder="Direccion completa"
+        className="mb-6 w-full rounded-xl border px-4 py-3"
       />
 
       <div className="flex justify-between">
-
-        <button onClick={back}>
-          Atrás
+        <button type="button" onClick={onBack}>
+          Atras
         </button>
 
-        <button
-          onClick={next}
-          className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl"
-        >
+        <button type="button" onClick={onNext} className="rounded-xl bg-[#7a5c3e] px-6 py-3 text-white">
           Continuar al pago
         </button>
-
       </div>
     </>
   );
 }
 
-/* =========================
-PASO 7
-========================= */
-
-function PasoPago({
-  pedido,
+function PaymentStep({
   total,
-  back,
+  isPaying,
+  onBack,
+  onPay,
 }: {
-  pedido: Pedido;
   total: number;
-  back: () => void;
+  isPaying: boolean;
+  onBack: () => void;
+  onPay: () => Promise<void>;
 }) {
-
-  const [loading,setLoading]=useState(false);
-
-  const pagar = async () => {
-
-    try {
-
-      setLoading(true);
-
-      const res = await fetch("/api/create-checkout-session",{
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body:JSON.stringify(pedido)
-      });
-
-      const data = await res.json() as CheckoutResponse;
-
-      if(!data.success){
-        alert(data.message || "Error creando pago");
-        setLoading(false);
-        return;
-      }
-
-      if(data.url){
-        window.location.href = data.url;
-      }
-
-    } catch (error) {
-
-      console.error(error);
-      alert("Error conectando con Stripe");
-      setLoading(false);
-
-    }
-
-  };
-
   return (
     <>
-      <h2 className="text-2xl font-semibold mb-6 text-center">
-        Pago
-      </h2>
-
-      <p className="text-center mb-6">
-        Total a pagar: ${total}
-      </p>
+      <h2 className="mb-6 text-center text-2xl font-semibold">Pago</h2>
+      <p className="mb-6 text-center">Total a pagar: ${total}</p>
 
       <div className="flex justify-between">
-
-        <button onClick={back}>
-          Atrás
+        <button type="button" onClick={onBack}>
+          Atras
         </button>
 
         <button
-          onClick={pagar}
-          disabled={loading}
-          className="bg-[#7a5c3e] text-white px-6 py-3 rounded-xl"
+          type="button"
+          onClick={onPay}
+          disabled={isPaying}
+          className="rounded-xl bg-[#7a5c3e] px-6 py-3 text-white disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? "Procesando..." : "Pagar ahora"}
+          {isPaying ? "Procesando..." : "Pagar ahora"}
         </button>
-
       </div>
     </>
+  );
+}
+
+export default function PedidoPage() {
+  const router = useRouter();
+  const { state, totals, actions } = useCheckout();
+
+  const goToPayment = async () => {
+    const url = await actions.startPayment();
+    if (url) {
+      window.location.href = url;
+    }
+  };
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#f5f1e8] px-4 py-12">
+      <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl">
+        <CheckoutHeader step={state.step} />
+
+        {state.error ? <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{state.error}</p> : null}
+
+        {state.step === 1 ? (
+          <PostalCodeStep
+            onValidate={actions.validateAndLoadZone}
+            isLoading={state.isLoading}
+            message={state.zoneMessage}
+          />
+        ) : null}
+
+        {state.step === 2 && state.productosCargados ? (
+          <ProductSelector
+            kilos={state.pedido.kilos}
+            maxKilos={state.maxKilos}
+            envio={state.pedido.envio}
+            onSelectKilos={actions.setKilos}
+            onBack={actions.backStep}
+            onNext={actions.nextStep}
+            onSpecialOrder={() => router.push("/pedido-especial")}
+          />
+        ) : null}
+
+        {state.step === 3 ? (
+          <SauceSelector
+            kilos={state.pedido.kilos}
+            verde={state.pedido.verde}
+            roja={state.pedido.roja}
+            chilePasado={state.pedido.chilePasado}
+            precios={state.precios}
+            onChangeSauce={actions.setSauce}
+            onBack={actions.backStep}
+            onNext={actions.nextStep}
+          />
+        ) : null}
+
+        {state.step === 4 ? (
+          <DeliveryDate
+            fecha={state.pedido.fecha}
+            ventana={state.pedido.ventana}
+            onFechaChange={actions.setFecha}
+            onVentanaChange={actions.setVentana}
+            onBack={actions.backStep}
+            onNext={actions.nextStep}
+          />
+        ) : null}
+
+        {state.step === 5 ? (
+          <ConfirmationStep total={totals.total} onBack={actions.backStep} onNext={actions.nextStep} />
+        ) : null}
+
+        {state.step === 6 ? (
+          <ShippingStep
+            telefono={state.envioDatos.telefono}
+            direccion={state.envioDatos.direccion}
+            onTelefonoChange={actions.setTelefono}
+            onDireccionChange={actions.setDireccion}
+            onBack={actions.backStep}
+            onNext={actions.nextStep}
+          />
+        ) : null}
+
+        {state.step === 7 ? (
+          <PaymentStep total={totals.total} isPaying={state.isPaying} onBack={actions.backStep} onPay={goToPayment} />
+        ) : null}
+
+        {state.step > 1 ? <OrderSummary envio={state.pedido.envio} totals={totals} /> : null}
+      </div>
+    </main>
   );
 }
