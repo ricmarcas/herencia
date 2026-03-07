@@ -6,6 +6,14 @@ import type { CheckoutStep, PedidoPayload, SauceKey, Totales } from "@/types/ped
 import type { CheckoutState } from "@/types/pedido";
 import type { PreciosCatalogo, Producto } from "@/types/producto";
 
+const DEFAULT_DELIVERY_WINDOW = "SIN_VENTANA";
+
+const COLONIAS_POR_CP: Record<string, string[]> = {
+  "03020": ["Alamos", "Del Valle Centro", "Narvarte Poniente"],
+  "03100": ["Del Valle Norte", "Del Valle Centro", "Del Valle Sur"],
+  "03230": ["Actipan", "Insurgentes Mixcoac", "San Jose Insurgentes"],
+};
+
 const initialState: CheckoutState = {
   step: 1,
   pedido: {
@@ -15,12 +23,17 @@ const initialState: CheckoutState = {
     verde: 0,
     roja: 0,
     chilePasado: 0,
+    telefono: "",
+    direccion: "",
     fecha: "",
-    ventana: "",
+    ventana: DEFAULT_DELIVERY_WINDOW,
   },
   envioDatos: {
     telefono: "",
-    direccion: "",
+    calle: "",
+    numeroExterior: "",
+    numeroInterior: "",
+    colonia: "",
   },
   precios: {
     barbacoa: 0,
@@ -51,9 +64,11 @@ type CheckoutAction =
   | { type: "SET_KILOS"; payload: number }
   | { type: "SET_SAUCE"; payload: { key: SauceKey; value: number } }
   | { type: "SET_FECHA"; payload: string }
-  | { type: "SET_VENTANA"; payload: string }
   | { type: "SET_TELEFONO"; payload: string }
-  | { type: "SET_DIRECCION"; payload: string };
+  | { type: "SET_CALLE"; payload: string }
+  | { type: "SET_NUMERO_EXTERIOR"; payload: string }
+  | { type: "SET_NUMERO_INTERIOR"; payload: string }
+  | { type: "SET_COLONIA"; payload: string };
 
 function toPrecios(productos: Producto[]): PreciosCatalogo {
   const buscar = (nombre: string) => productos.find((item) => item.nombre === nombre)?.precio ?? 0;
@@ -75,6 +90,51 @@ function clampSauce(value: number, kilos: number): number {
     return max;
   }
   return value;
+}
+
+function normalizePhone(value: string): string {
+  return value.replace(/\D/g, "").slice(0, 10);
+}
+
+function formatDateLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getDateRange() {
+  const tomorrow = new Date();
+  tomorrow.setHours(0, 0, 0, 0);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const maxDate = new Date(tomorrow);
+  maxDate.setDate(maxDate.getDate() + 6);
+
+  return {
+    minDate: formatDateLocal(tomorrow),
+    maxDate: formatDateLocal(maxDate),
+  };
+}
+
+function isDateInRange(value: string): boolean {
+  if (!value) {
+    return false;
+  }
+
+  const { minDate, maxDate } = getDateRange();
+  return value >= minDate && value <= maxDate;
+}
+
+function buildDireccion(state: CheckoutState): string {
+  const { calle, numeroExterior, numeroInterior, colonia } = state.envioDatos;
+  const interiorSegment = numeroInterior.trim().length > 0 ? ` Int ${numeroInterior.trim()}` : "";
+
+  return `${calle.trim()} ${numeroExterior.trim()}${interiorSegment}, Col. ${colonia.trim()}, CP ${state.pedido.cp}`;
+}
+
+function getColoniasForCp(cp: string): string[] {
+  return COLONIAS_POR_CP[cp] ?? [];
 }
 
 function checkoutReducer(state: CheckoutState, action: CheckoutAction): CheckoutState {
@@ -111,6 +171,10 @@ function checkoutReducer(state: CheckoutState, action: CheckoutAction): Checkout
           ...state.pedido,
           cp: action.payload.cp,
           envio: action.payload.envio,
+        },
+        envioDatos: {
+          ...state.envioDatos,
+          colonia: "",
         },
       };
 
@@ -149,14 +213,20 @@ function checkoutReducer(state: CheckoutState, action: CheckoutAction): Checkout
     case "SET_FECHA":
       return { ...state, pedido: { ...state.pedido, fecha: action.payload } };
 
-    case "SET_VENTANA":
-      return { ...state, pedido: { ...state.pedido, ventana: action.payload } };
-
     case "SET_TELEFONO":
-      return { ...state, envioDatos: { ...state.envioDatos, telefono: action.payload } };
+      return { ...state, envioDatos: { ...state.envioDatos, telefono: normalizePhone(action.payload) } };
 
-    case "SET_DIRECCION":
-      return { ...state, envioDatos: { ...state.envioDatos, direccion: action.payload } };
+    case "SET_CALLE":
+      return { ...state, envioDatos: { ...state.envioDatos, calle: action.payload } };
+
+    case "SET_NUMERO_EXTERIOR":
+      return { ...state, envioDatos: { ...state.envioDatos, numeroExterior: action.payload } };
+
+    case "SET_NUMERO_INTERIOR":
+      return { ...state, envioDatos: { ...state.envioDatos, numeroInterior: action.payload } };
+
+    case "SET_COLONIA":
+      return { ...state, envioDatos: { ...state.envioDatos, colonia: action.payload } };
 
     default:
       return state;
@@ -168,12 +238,20 @@ function getValidationError(state: CheckoutState): string {
     return "La cantidad seleccionada supera el inventario disponible.";
   }
 
-  if (state.step === 4 && (!state.pedido.fecha || !state.pedido.ventana)) {
-    return "Selecciona fecha y horario de entrega.";
+  if (state.step === 4 && !isDateInRange(state.pedido.fecha)) {
+    return "Selecciona una fecha valida: desde manana y hasta 7 dias.";
   }
 
-  if (state.step === 6 && (!state.envioDatos.telefono.trim() || !state.envioDatos.direccion.trim())) {
-    return "Completa telefono y direccion para continuar.";
+  if (state.step === 6) {
+    const phoneDigits = state.envioDatos.telefono;
+
+    if (phoneDigits.length !== 10) {
+      return "Ingresa un telefono celular de 10 digitos.";
+    }
+
+    if (!state.envioDatos.calle.trim() || !state.envioDatos.numeroExterior.trim() || !state.envioDatos.colonia.trim()) {
+      return "Completa calle, numero exterior y colonia.";
+    }
   }
 
   return "";
@@ -197,14 +275,18 @@ export function useCheckout() {
   const [state, dispatch] = useReducer(checkoutReducer, initialState);
 
   const totals = useMemo(() => computeTotals(state), [state]);
+  const dateRange = useMemo(() => getDateRange(), []);
+  const coloniasDisponibles = useMemo(() => getColoniasForCp(state.pedido.cp), [state.pedido.cp]);
 
   const validateAndLoadZone = async (cp: string): Promise<boolean> => {
+    const cpLimpio = cp.replace(/\D/g, "").slice(0, 5);
+
     dispatch({ type: "SET_LOADING", payload: true });
     dispatch({ type: "SET_ERROR", payload: "" });
     dispatch({ type: "SET_ZONE_MESSAGE", payload: "" });
 
     try {
-      const zone = await validateZone(cp);
+      const zone = await validateZone(cpLimpio);
 
       if (!zone.success) {
         dispatch({ type: "SET_ZONE_MESSAGE", payload: "Aun no entregamos en tu zona." });
@@ -212,7 +294,7 @@ export function useCheckout() {
         return false;
       }
 
-      dispatch({ type: "SET_ZONE", payload: { cp, envio: zone.envio } });
+      dispatch({ type: "SET_ZONE", payload: { cp: cpLimpio, envio: zone.envio } });
       dispatch({
         type: "SET_ZONE_MESSAGE",
         payload: zone.envio === 0 ? "Entregamos en tu zona - Envio GRATIS" : `Entregamos en tu zona - Envio $${zone.envio}`,
@@ -264,7 +346,13 @@ export function useCheckout() {
     dispatch({ type: "SET_ERROR", payload: "" });
 
     try {
-      const response = await createCheckoutSession(state.pedido as PedidoPayload);
+      const payload: PedidoPayload = {
+        ...state.pedido,
+        telefono: state.envioDatos.telefono,
+        direccion: buildDireccion(state),
+      };
+
+      const response = await createCheckoutSession(payload);
       if (!response.success || !response.url) {
         dispatch({ type: "SET_ERROR", payload: response.message ?? "Error creando sesion de pago." });
         return null;
@@ -282,6 +370,8 @@ export function useCheckout() {
   return {
     state,
     totals,
+    dateRange,
+    coloniasDisponibles,
     actions: {
       validateAndLoadZone,
       nextStep,
@@ -290,9 +380,11 @@ export function useCheckout() {
       setKilos: (kilos: number) => dispatch({ type: "SET_KILOS", payload: kilos }),
       setSauce: (key: SauceKey, value: number) => dispatch({ type: "SET_SAUCE", payload: { key, value } }),
       setFecha: (fecha: string) => dispatch({ type: "SET_FECHA", payload: fecha }),
-      setVentana: (ventana: string) => dispatch({ type: "SET_VENTANA", payload: ventana }),
       setTelefono: (telefono: string) => dispatch({ type: "SET_TELEFONO", payload: telefono }),
-      setDireccion: (direccion: string) => dispatch({ type: "SET_DIRECCION", payload: direccion }),
+      setCalle: (calle: string) => dispatch({ type: "SET_CALLE", payload: calle }),
+      setNumeroExterior: (numeroExterior: string) => dispatch({ type: "SET_NUMERO_EXTERIOR", payload: numeroExterior }),
+      setNumeroInterior: (numeroInterior: string) => dispatch({ type: "SET_NUMERO_INTERIOR", payload: numeroInterior }),
+      setColonia: (colonia: string) => dispatch({ type: "SET_COLONIA", payload: colonia }),
     },
   };
 }

@@ -11,13 +11,18 @@ export type PedidoPayload = {
   verde: number;
   roja: number;
   chilePasado: number;
+  telefono: string;
+  direccion: string;
   fecha: string;
   ventana: string;
 };
 
 export type DatosEnvio = {
   telefono: string;
-  direccion: string;
+  calle: string;
+  numeroExterior: string;
+  numeroInterior: string;
+  colonia: string;
 };
 
 export type CheckoutState = {
