@@ -55,9 +55,9 @@ export async function POST(req: Request) {
           product_data: {
             name: `Barbacoa Herencia (${kilos} kg)`,
           },
-          unit_amount: PRECIO_KILO * 100,
+          unit_amount: Math.round(kilos * PRECIO_KILO * 100),
         },
-        quantity: kilos,
+        quantity: 1,
       },
     ];
 
