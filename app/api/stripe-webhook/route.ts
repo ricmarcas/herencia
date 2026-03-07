@@ -255,11 +255,6 @@ async function appendPedidoByHeaders(payload: {
   direccionId: string;
   nombre: string;
   email: string;
-  direccion: string;
-  colonia: string;
-  calle: string;
-  numeroExterior: string;
-  numeroInterior: string;
 }) {
   const rows = await getSheetData("Pedidos!A1:AZ1");
   const headers = rows[0] ?? [];
@@ -307,11 +302,6 @@ async function appendPedidoByHeaders(payload: {
   assign(["DireccionID", "IDDireccion"], payload.direccionId);
   assign(["Nombre"], payload.nombre);
   assign(["Email", "Correo"], payload.email);
-  assign(["Direccion", "Dirección"], payload.direccion);
-  assign(["Colonia"], payload.colonia);
-  assign(["Calle"], payload.calle);
-  assign(["NumeroExterior", "Numero Ext", "NumeroExt"], payload.numeroExterior);
-  assign(["NumeroInterior", "Numero Int", "NumeroInt"], payload.numeroInterior);
 
   await appendRow(`Pedidos!A2:${columnToLetter(headers.length)}5000`, row);
 }
@@ -342,7 +332,6 @@ export async function POST(req: Request) {
       const nombre = String(metadata.nombre ?? "").trim();
       const email = String(metadata.email ?? "").trim().toLowerCase();
       const telefono = normalizePhone(String(metadata.telefono ?? ""));
-      const direccion = String(metadata.direccion ?? "").trim();
       const calle = String(metadata.calle ?? "").trim();
       const colonia = String(metadata.colonia ?? "").trim();
       const numeroExterior = String(metadata.numeroExterior ?? "").trim();
@@ -385,11 +374,6 @@ export async function POST(req: Request) {
         direccionId,
         nombre,
         email,
-        direccion,
-        colonia,
-        calle,
-        numeroExterior,
-        numeroInterior,
       });
 
       const inventario = await getSheetData("Inventario!A2:C20");
