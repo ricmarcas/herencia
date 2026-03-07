@@ -17,7 +17,7 @@ export function CheckoutHeader({ step }: CheckoutHeaderProps) {
 
         <div className="mx-2 flex-1">
           <div className={`h-2 rounded ${etapa >= 2 ? "bg-[#7a5c3e]" : "bg-gray-200"}`} />
-          <p className="mt-1">Envio</p>
+          <p className="mt-1">Entrega</p>
         </div>
 
         <div className="flex-1">
@@ -25,8 +25,6 @@ export function CheckoutHeader({ step }: CheckoutHeaderProps) {
           <p className="mt-1">Pago</p>
         </div>
       </div>
-
-      <p className="mt-4 text-center text-sm text-neutral-500">Paso {step} de 7</p>
     </div>
   );
 }

@@ -22,7 +22,7 @@ export function ProductSelector({
 
   return (
     <>
-      <h2 className="mb-4 text-center text-2xl font-semibold">Selecciona kilos</h2>
+      <p className="mb-4 text-sm text-neutral-600">Elige la cantidad de barbacoa.</p>
 
       <p className="mb-4 text-center text-sm text-neutral-600">
         {envio === 0 ? "Envio GRATIS" : `Envio $${envio}`}

@@ -32,8 +32,7 @@ export function SauceSelector({
 
   return (
     <>
-      <h2 className="mb-2 text-center text-2xl font-semibold">Salsas (300ml)</h2>
-      <p className="mb-6 text-center text-sm text-neutral-600">Maximo {max} salsas en total</p>
+      <p className="mb-6 text-sm text-neutral-600">Selecciona hasta {max} salsas en total.</p>
 
       {items.map((item) => (
         <div key={item.key} className="mb-4 flex items-center justify-between">

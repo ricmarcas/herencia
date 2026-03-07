@@ -22,19 +22,20 @@ function PostalCodeStep({
 
   return (
     <>
-      <h2 className="mb-6 text-center text-2xl font-semibold">Codigo Postal</h2>
+      <p className="mb-3 text-sm text-neutral-600">Ingresa tu codigo postal para validar cobertura.</p>
 
       <input
         value={cp}
-        onChange={(event) => setCp(event.target.value)}
+        onChange={(event) => setCp(event.target.value.replace(/\D/g, "").slice(0, 5))}
         placeholder="Ej. 03020"
+        inputMode="numeric"
         className="mb-6 w-full rounded-xl border px-4 py-3"
       />
 
       <button
         type="button"
         onClick={() => onValidate(cp)}
-        disabled={isLoading || cp.trim().length === 0}
+        disabled={isLoading || cp.trim().length !== 5}
         className="w-full rounded-xl bg-[#7a5c3e] py-3 text-white disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isLoading ? "Validando..." : "Validar zona"}
@@ -48,7 +49,6 @@ function PostalCodeStep({
 function ConfirmationStep({ total, onBack, onNext }: { total: number; onBack: () => void; onNext: () => void }) {
   return (
     <>
-      <h2 className="mb-6 text-center text-2xl font-semibold">Confirmar pedido</h2>
       <p className="mb-6 text-center">Total a pagar: ${total}</p>
 
       <div className="flex justify-between">
@@ -65,37 +65,101 @@ function ConfirmationStep({ total, onBack, onNext }: { total: number; onBack: ()
 }
 
 function ShippingStep({
+  cp,
   telefono,
-  direccion,
+  calle,
+  numeroExterior,
+  numeroInterior,
+  colonia,
+  coloniasDisponibles,
   onTelefonoChange,
-  onDireccionChange,
+  onCalleChange,
+  onNumeroExteriorChange,
+  onNumeroInteriorChange,
+  onColoniaChange,
   onBack,
   onNext,
 }: {
+  cp: string;
   telefono: string;
-  direccion: string;
+  calle: string;
+  numeroExterior: string;
+  numeroInterior: string;
+  colonia: string;
+  coloniasDisponibles: string[];
   onTelefonoChange: (value: string) => void;
-  onDireccionChange: (value: string) => void;
+  onCalleChange: (value: string) => void;
+  onNumeroExteriorChange: (value: string) => void;
+  onNumeroInteriorChange: (value: string) => void;
+  onColoniaChange: (value: string) => void;
   onBack: () => void;
   onNext: () => void;
 }) {
   return (
     <>
-      <h2 className="mb-6 text-center text-2xl font-semibold">Datos de entrega</h2>
+      <p className="mb-4 text-sm text-neutral-600">Comparte tus datos de entrega para continuar al pago.</p>
 
       <input
         value={telefono}
         onChange={(event) => onTelefonoChange(event.target.value)}
-        placeholder="Telefono"
+        placeholder="Telefono celular (10 digitos)"
+        inputMode="numeric"
+        maxLength={10}
         className="mb-4 w-full rounded-xl border px-4 py-3"
       />
 
-      <textarea
-        value={direccion}
-        onChange={(event) => onDireccionChange(event.target.value)}
-        placeholder="Direccion completa"
-        className="mb-6 w-full rounded-xl border px-4 py-3"
-      />
+      <div className="mb-4 grid grid-cols-2 gap-3">
+        <input value={cp} readOnly className="rounded-xl border bg-neutral-100 px-4 py-3 text-neutral-700" />
+
+        <input
+          value={numeroExterior}
+          onChange={(event) => onNumeroExteriorChange(event.target.value)}
+          placeholder="Numero exterior"
+          className="rounded-xl border px-4 py-3"
+        />
+      </div>
+
+      <div className="mb-4">
+        <input
+          value={calle}
+          onChange={(event) => onCalleChange(event.target.value)}
+          placeholder="Calle"
+          className="w-full rounded-xl border px-4 py-3"
+        />
+      </div>
+
+      <div className="mb-4">
+        <select
+          value={coloniasDisponibles.includes(colonia) ? colonia : ""}
+          onChange={(event) => onColoniaChange(event.target.value)}
+          className="w-full rounded-xl border px-4 py-3"
+        >
+          <option value="">Selecciona colonia</option>
+          {coloniasDisponibles.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="mb-6">
+        <input
+          value={coloniasDisponibles.includes(colonia) ? "" : colonia}
+          onChange={(event) => onColoniaChange(event.target.value)}
+          placeholder="Si no aparece tu colonia, escribela aqui"
+          className="w-full rounded-xl border px-4 py-3"
+        />
+      </div>
+
+      <div className="mb-6">
+        <input
+          value={numeroInterior}
+          onChange={(event) => onNumeroInteriorChange(event.target.value)}
+          placeholder="Numero interior (opcional)"
+          className="w-full rounded-xl border px-4 py-3"
+        />
+      </div>
 
       <div className="flex justify-between">
         <button type="button" onClick={onBack}>
@@ -123,7 +187,6 @@ function PaymentStep({
 }) {
   return (
     <>
-      <h2 className="mb-6 text-center text-2xl font-semibold">Pago</h2>
       <p className="mb-6 text-center">Total a pagar: ${total}</p>
 
       <div className="flex justify-between">
@@ -146,7 +209,7 @@ function PaymentStep({
 
 export default function PedidoPage() {
   const router = useRouter();
-  const { state, totals, actions } = useCheckout();
+  const { state, totals, dateRange, coloniasDisponibles, actions } = useCheckout();
 
   const goToPayment = async () => {
     const url = await actions.startPayment();
@@ -198,9 +261,9 @@ export default function PedidoPage() {
         {state.step === 4 ? (
           <DeliveryDate
             fecha={state.pedido.fecha}
-            ventana={state.pedido.ventana}
+            minDate={dateRange.minDate}
+            maxDate={dateRange.maxDate}
             onFechaChange={actions.setFecha}
-            onVentanaChange={actions.setVentana}
             onBack={actions.backStep}
             onNext={actions.nextStep}
           />
@@ -212,10 +275,18 @@ export default function PedidoPage() {
 
         {state.step === 6 ? (
           <ShippingStep
+            cp={state.pedido.cp}
             telefono={state.envioDatos.telefono}
-            direccion={state.envioDatos.direccion}
+            calle={state.envioDatos.calle}
+            numeroExterior={state.envioDatos.numeroExterior}
+            numeroInterior={state.envioDatos.numeroInterior}
+            colonia={state.envioDatos.colonia}
+            coloniasDisponibles={coloniasDisponibles}
             onTelefonoChange={actions.setTelefono}
-            onDireccionChange={actions.setDireccion}
+            onCalleChange={actions.setCalle}
+            onNumeroExteriorChange={actions.setNumeroExterior}
+            onNumeroInteriorChange={actions.setNumeroInterior}
+            onColoniaChange={actions.setColonia}
             onBack={actions.backStep}
             onNext={actions.nextStep}
           />
