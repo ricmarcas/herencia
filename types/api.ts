@@ -20,3 +20,9 @@ export type CheckoutResponse = {
   url?: string;
   message?: string;
 };
+
+export type ColoniasResponse = {
+  success: boolean;
+  colonias: string[];
+  message?: string;
+};

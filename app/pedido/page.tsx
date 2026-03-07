@@ -66,12 +66,16 @@ function ConfirmationStep({ total, onBack, onNext }: { total: number; onBack: ()
 
 function ShippingStep({
   cp,
+  nombre,
+  email,
   telefono,
   calle,
   numeroExterior,
   numeroInterior,
   colonia,
   coloniasDisponibles,
+  onNombreChange,
+  onEmailChange,
   onTelefonoChange,
   onCalleChange,
   onNumeroExteriorChange,
@@ -81,12 +85,16 @@ function ShippingStep({
   onNext,
 }: {
   cp: string;
+  nombre: string;
+  email: string;
   telefono: string;
   calle: string;
   numeroExterior: string;
   numeroInterior: string;
   colonia: string;
   coloniasDisponibles: string[];
+  onNombreChange: (value: string) => void;
+  onEmailChange: (value: string) => void;
   onTelefonoChange: (value: string) => void;
   onCalleChange: (value: string) => void;
   onNumeroExteriorChange: (value: string) => void;
@@ -105,6 +113,21 @@ function ShippingStep({
         placeholder="Telefono celular (10 digitos)"
         inputMode="numeric"
         maxLength={10}
+        className="mb-4 w-full rounded-xl border px-4 py-3"
+      />
+
+      <input
+        value={nombre}
+        onChange={(event) => onNombreChange(event.target.value)}
+        placeholder="Nombre de quien recibe"
+        className="mb-4 w-full rounded-xl border px-4 py-3"
+      />
+
+      <input
+        type="email"
+        value={email}
+        onChange={(event) => onEmailChange(event.target.value)}
+        placeholder="Email para confirmaciones"
         className="mb-4 w-full rounded-xl border px-4 py-3"
       />
 
@@ -276,12 +299,16 @@ export default function PedidoPage() {
         {state.step === 6 ? (
           <ShippingStep
             cp={state.pedido.cp}
+            nombre={state.envioDatos.nombre}
+            email={state.envioDatos.email}
             telefono={state.envioDatos.telefono}
             calle={state.envioDatos.calle}
             numeroExterior={state.envioDatos.numeroExterior}
             numeroInterior={state.envioDatos.numeroInterior}
             colonia={state.envioDatos.colonia}
             coloniasDisponibles={coloniasDisponibles}
+            onNombreChange={actions.setNombre}
+            onEmailChange={actions.setEmail}
             onTelefonoChange={actions.setTelefono}
             onCalleChange={actions.setCalle}
             onNumeroExteriorChange={actions.setNumeroExterior}

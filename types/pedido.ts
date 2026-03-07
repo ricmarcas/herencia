@@ -11,13 +11,21 @@ export type PedidoPayload = {
   verde: number;
   roja: number;
   chilePasado: number;
+  nombre: string;
+  email: string;
   telefono: string;
   direccion: string;
+  calle: string;
+  colonia: string;
+  numeroExterior: string;
+  numeroInterior: string;
   fecha: string;
   ventana: string;
 };
 
 export type DatosEnvio = {
+  nombre: string;
+  email: string;
   telefono: string;
   calle: string;
   numeroExterior: string;
@@ -31,6 +39,7 @@ export type CheckoutState = {
   envioDatos: DatosEnvio;
   precios: PreciosCatalogo;
   maxKilos: number;
+  coloniasDisponibles: string[];
   productosCargados: boolean;
   zoneMessage: string;
   error: string;

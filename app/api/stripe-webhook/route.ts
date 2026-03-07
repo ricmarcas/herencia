@@ -34,8 +34,15 @@ export async function POST(req: Request) {
       const chilePasado = Number(metadata.chilePasado ?? 0);
       const envio = Number(metadata.envio ?? 0);
 
+      const cp = metadata.cp ?? "";
+      const nombre = metadata.nombre ?? "";
+      const email = metadata.email ?? "";
       const telefono = metadata.telefono ?? "";
       const direccion = metadata.direccion ?? "";
+      const calle = metadata.calle ?? "";
+      const colonia = metadata.colonia ?? "";
+      const numeroExterior = metadata.numeroExterior ?? "";
+      const numeroInterior = metadata.numeroInterior ?? "";
       const fechaEntrega = metadata.fecha ?? "";
       const ventana = metadata.ventana ?? "";
 
@@ -44,7 +51,7 @@ export async function POST(req: Request) {
         : 0;
 
       // 📝 Guardar en hoja Pedidos
-      await appendRow("Pedidos!A2:L1000", [
+      await appendRow("Pedidos!A2:T2000", [
         session.id,
         new Date().toISOString(),
         telefono,
@@ -52,11 +59,18 @@ export async function POST(req: Request) {
         verde,
         roja,
         chilePasado,
-        direccion,
+        cp,
         envio,
         total,
         fechaEntrega,
         ventana,
+        nombre,
+        email,
+        direccion,
+        colonia,
+        calle,
+        numeroExterior,
+        numeroInterior,
       ]);
 
       // 📦 Obtener inventario actual

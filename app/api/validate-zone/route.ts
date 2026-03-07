@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     }
 
     // Leer hoja Zonas
-    const zonas = await getSheetData("Zonas!A2:C100");
+    const zonas = await getSheetData("Zonas!A2:C3000");
 
     if (!zonas || zonas.length === 0) {
       return NextResponse.json({

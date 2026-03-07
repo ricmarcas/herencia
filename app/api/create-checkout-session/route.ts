@@ -11,13 +11,20 @@ export async function POST(req: Request) {
     const body = await req.json();
 
     const {
+      cp,
       kilos,
       verde = 0,
       roja = 0,
       chilePasado = 0,
       envio = 0,
+      nombre,
+      email,
       telefono,
       direccion,
+      calle = "",
+      colonia = "",
+      numeroExterior = "",
+      numeroInterior = "",
       fecha,
       ventana,
     } = body;
@@ -29,7 +36,7 @@ export async function POST(req: Request) {
       });
     }
 
-    if (!telefono || !direccion || !fecha || !ventana) {
+    if (!cp || !telefono || !direccion || !fecha || !ventana || !nombre || !email) {
       return NextResponse.json({
         success: false,
         message: "Datos incompletos del pedido",
@@ -108,8 +115,15 @@ export async function POST(req: Request) {
         roja: String(roja),
         chilePasado: String(chilePasado),
         envio: String(envio),
+        cp: String(cp),
+        nombre: String(nombre),
+        email: String(email),
         telefono: String(telefono),
         direccion: String(direccion),
+        calle: String(calle),
+        colonia: String(colonia),
+        numeroExterior: String(numeroExterior),
+        numeroInterior: String(numeroInterior),
         fecha: String(fecha),
         ventana: String(ventana),
       },

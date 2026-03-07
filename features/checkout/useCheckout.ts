@@ -1,18 +1,12 @@
 "use client";
 
 import { useMemo, useReducer } from "react";
-import { createCheckoutSession, getMaxInventory, getProductos, validateZone } from "@/services/api";
+import { createCheckoutSession, getColonias, getMaxInventory, getProductos, validateZone } from "@/services/api";
 import type { CheckoutStep, PedidoPayload, SauceKey, Totales } from "@/types/pedido";
 import type { CheckoutState } from "@/types/pedido";
 import type { PreciosCatalogo, Producto } from "@/types/producto";
 
 const DEFAULT_DELIVERY_WINDOW = "SIN_VENTANA";
-
-const COLONIAS_POR_CP: Record<string, string[]> = {
-  "03020": ["Alamos", "Del Valle Centro", "Narvarte Poniente"],
-  "03100": ["Del Valle Norte", "Del Valle Centro", "Del Valle Sur"],
-  "03230": ["Actipan", "Insurgentes Mixcoac", "San Jose Insurgentes"],
-};
 
 const initialState: CheckoutState = {
   step: 1,
@@ -23,12 +17,20 @@ const initialState: CheckoutState = {
     verde: 0,
     roja: 0,
     chilePasado: 0,
+    nombre: "",
+    email: "",
     telefono: "",
     direccion: "",
+    calle: "",
+    colonia: "",
+    numeroExterior: "",
+    numeroInterior: "",
     fecha: "",
     ventana: DEFAULT_DELIVERY_WINDOW,
   },
   envioDatos: {
+    nombre: "",
+    email: "",
     telefono: "",
     calle: "",
     numeroExterior: "",
@@ -42,6 +44,7 @@ const initialState: CheckoutState = {
     chilePasado: 0,
   },
   maxKilos: 4,
+  coloniasDisponibles: [],
   productosCargados: false,
   zoneMessage: "",
   error: "",
@@ -59,11 +62,14 @@ type CheckoutAction =
   | { type: "PREV_STEP" }
   | { type: "SET_ZONE"; payload: { cp: string; envio: number } }
   | { type: "SET_PRECIOS"; payload: PreciosCatalogo }
+  | { type: "SET_COLONIAS"; payload: string[] }
   | { type: "SET_PRODUCTOS_CARGADOS"; payload: boolean }
   | { type: "SET_MAX_KILOS"; payload: number }
   | { type: "SET_KILOS"; payload: number }
   | { type: "SET_SAUCE"; payload: { key: SauceKey; value: number } }
   | { type: "SET_FECHA"; payload: string }
+  | { type: "SET_NOMBRE"; payload: string }
+  | { type: "SET_EMAIL"; payload: string }
   | { type: "SET_TELEFONO"; payload: string }
   | { type: "SET_CALLE"; payload: string }
   | { type: "SET_NUMERO_EXTERIOR"; payload: string }
@@ -126,15 +132,15 @@ function isDateInRange(value: string): boolean {
   return value >= minDate && value <= maxDate;
 }
 
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 function buildDireccion(state: CheckoutState): string {
   const { calle, numeroExterior, numeroInterior, colonia } = state.envioDatos;
   const interiorSegment = numeroInterior.trim().length > 0 ? ` Int ${numeroInterior.trim()}` : "";
 
   return `${calle.trim()} ${numeroExterior.trim()}${interiorSegment}, Col. ${colonia.trim()}, CP ${state.pedido.cp}`;
-}
-
-function getColoniasForCp(cp: string): string[] {
-  return COLONIAS_POR_CP[cp] ?? [];
 }
 
 function checkoutReducer(state: CheckoutState, action: CheckoutAction): CheckoutState {
@@ -181,6 +187,9 @@ function checkoutReducer(state: CheckoutState, action: CheckoutAction): Checkout
     case "SET_PRECIOS":
       return { ...state, precios: action.payload };
 
+    case "SET_COLONIAS":
+      return { ...state, coloniasDisponibles: action.payload };
+
     case "SET_PRODUCTOS_CARGADOS":
       return { ...state, productosCargados: action.payload };
 
@@ -213,6 +222,12 @@ function checkoutReducer(state: CheckoutState, action: CheckoutAction): Checkout
     case "SET_FECHA":
       return { ...state, pedido: { ...state.pedido, fecha: action.payload } };
 
+    case "SET_NOMBRE":
+      return { ...state, envioDatos: { ...state.envioDatos, nombre: action.payload } };
+
+    case "SET_EMAIL":
+      return { ...state, envioDatos: { ...state.envioDatos, email: action.payload.trim() } };
+
     case "SET_TELEFONO":
       return { ...state, envioDatos: { ...state.envioDatos, telefono: normalizePhone(action.payload) } };
 
@@ -243,9 +258,15 @@ function getValidationError(state: CheckoutState): string {
   }
 
   if (state.step === 6) {
-    const phoneDigits = state.envioDatos.telefono;
+    if (!state.envioDatos.nombre.trim()) {
+      return "Ingresa el nombre de quien recibe.";
+    }
 
-    if (phoneDigits.length !== 10) {
+    if (!isValidEmail(state.envioDatos.email)) {
+      return "Ingresa un email valido para confirmaciones.";
+    }
+
+    if (state.envioDatos.telefono.length !== 10) {
       return "Ingresa un telefono celular de 10 digitos.";
     }
 
@@ -276,7 +297,6 @@ export function useCheckout() {
 
   const totals = useMemo(() => computeTotals(state), [state]);
   const dateRange = useMemo(() => getDateRange(), []);
-  const coloniasDisponibles = useMemo(() => getColoniasForCp(state.pedido.cp), [state.pedido.cp]);
 
   const validateAndLoadZone = async (cp: string): Promise<boolean> => {
     const cpLimpio = cp.replace(/\D/g, "").slice(0, 5);
@@ -300,7 +320,11 @@ export function useCheckout() {
         payload: zone.envio === 0 ? "Entregamos en tu zona - Envio GRATIS" : `Entregamos en tu zona - Envio $${zone.envio}`,
       });
 
-      const [products, inventory] = await Promise.all([getProductos(), getMaxInventory()]);
+      const [products, inventory, coloniasResponse] = await Promise.all([
+        getProductos(),
+        getMaxInventory(),
+        getColonias(cpLimpio),
+      ]);
 
       if (products.success) {
         dispatch({ type: "SET_PRECIOS", payload: toPrecios(products.productos) });
@@ -312,6 +336,12 @@ export function useCheckout() {
         if (state.pedido.kilos > inventory.maxKilos) {
           dispatch({ type: "SET_KILOS", payload: inventory.maxKilos });
         }
+      }
+
+      if (coloniasResponse.success) {
+        dispatch({ type: "SET_COLONIAS", payload: coloniasResponse.colonias });
+      } else {
+        dispatch({ type: "SET_COLONIAS", payload: [] });
       }
 
       dispatch({ type: "SET_STEP", payload: 2 });
@@ -348,8 +378,14 @@ export function useCheckout() {
     try {
       const payload: PedidoPayload = {
         ...state.pedido,
+        nombre: state.envioDatos.nombre.trim(),
+        email: state.envioDatos.email.trim().toLowerCase(),
         telefono: state.envioDatos.telefono,
         direccion: buildDireccion(state),
+        calle: state.envioDatos.calle.trim(),
+        colonia: state.envioDatos.colonia.trim(),
+        numeroExterior: state.envioDatos.numeroExterior.trim(),
+        numeroInterior: state.envioDatos.numeroInterior.trim(),
       };
 
       const response = await createCheckoutSession(payload);
@@ -371,7 +407,7 @@ export function useCheckout() {
     state,
     totals,
     dateRange,
-    coloniasDisponibles,
+    coloniasDisponibles: state.coloniasDisponibles,
     actions: {
       validateAndLoadZone,
       nextStep,
@@ -380,6 +416,8 @@ export function useCheckout() {
       setKilos: (kilos: number) => dispatch({ type: "SET_KILOS", payload: kilos }),
       setSauce: (key: SauceKey, value: number) => dispatch({ type: "SET_SAUCE", payload: { key, value } }),
       setFecha: (fecha: string) => dispatch({ type: "SET_FECHA", payload: fecha }),
+      setNombre: (nombre: string) => dispatch({ type: "SET_NOMBRE", payload: nombre }),
+      setEmail: (email: string) => dispatch({ type: "SET_EMAIL", payload: email }),
       setTelefono: (telefono: string) => dispatch({ type: "SET_TELEFONO", payload: telefono }),
       setCalle: (calle: string) => dispatch({ type: "SET_CALLE", payload: calle }),
       setNumeroExterior: (numeroExterior: string) => dispatch({ type: "SET_NUMERO_EXTERIOR", payload: numeroExterior }),
