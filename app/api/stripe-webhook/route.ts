@@ -51,7 +51,7 @@ function normalizePhone(phone: string): string {
   return phone.replace(/\D/g, "").slice(0, 10);
 }
 
-function toNumber(value: string | number | undefined): number {
+function toNumber(value: string | number | boolean | undefined): number {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
 }
@@ -106,7 +106,10 @@ async function upsertCliente(data: {
   if (rowIndex >= 0) {
     const sheetRowNumber = rowIndex + 2;
     const currentRow = rows[sheetRowNumber - 1] ?? [];
-    const mutableRow = Array.from({ length: headers.length }, (_, idx) => currentRow[idx] ?? "");
+    const mutableRow: Array<string | number | boolean> = Array.from(
+      { length: headers.length },
+      (_, idx) => currentRow[idx] ?? ""
+    );
 
     const existingCompras = idxCompras >= 0 ? toNumber(mutableRow[idxCompras]) : 0;
     const existingKilos = idxKilos >= 0 ? toNumber(mutableRow[idxKilos]) : 0;
@@ -133,7 +136,7 @@ async function upsertCliente(data: {
     return clienteId;
   }
 
-  const newRow = Array.from({ length: headers.length }, () => "");
+  const newRow: Array<string | number | boolean> = Array.from({ length: headers.length }, () => "");
   const newClienteId = idxClienteId >= 0 ? createId("CLI") : "";
 
   if (idxClienteId >= 0) newRow[idxClienteId] = newClienteId;
@@ -200,7 +203,10 @@ async function upsertDireccion(data: {
   if (rowIndex >= 0) {
     const sheetRowNumber = rowIndex + 2;
     const currentRow = rows[sheetRowNumber - 1] ?? [];
-    const mutableRow = Array.from({ length: headers.length }, (_, idx) => currentRow[idx] ?? "");
+    const mutableRow: Array<string | number | boolean> = Array.from(
+      { length: headers.length },
+      (_, idx) => currentRow[idx] ?? ""
+    );
 
     if (idxClienteId >= 0) mutableRow[idxClienteId] = data.clienteId;
     if (idxTelefono >= 0) mutableRow[idxTelefono] = normalizePhone(data.telefono);
@@ -220,7 +226,7 @@ async function upsertDireccion(data: {
     return direccionId;
   }
 
-  const newRow = Array.from({ length: headers.length }, () => "");
+  const newRow: Array<string | number | boolean> = Array.from({ length: headers.length }, () => "");
   const direccionId = idxDireccionId >= 0 ? createId("DIR") : "";
 
   if (idxDireccionId >= 0) newRow[idxDireccionId] = direccionId;
@@ -253,14 +259,12 @@ async function appendPedidoByHeaders(payload: {
   ventana: string;
   clienteId: string;
   direccionId: string;
-  nombre: string;
-  email: string;
 }) {
   const rows = await getSheetData("Pedidos!A1:AZ1");
   const headers = rows[0] ?? [];
 
   if (!headers.length) {
-    await appendRow("Pedidos!A2:L1000", [
+    await appendRow("Pedidos!A2:N1000", [
       payload.sessionId,
       payload.createdAt,
       payload.telefono,
@@ -273,11 +277,13 @@ async function appendPedidoByHeaders(payload: {
       payload.total,
       payload.fechaEntrega,
       payload.ventana,
+      payload.clienteId,
+      payload.direccionId,
     ]);
     return;
   }
 
-  const row = Array.from({ length: headers.length }, () => "");
+  const row: Array<string | number | boolean> = Array.from({ length: headers.length }, () => "");
 
   const assign = (candidates: string[], value: string | number | boolean) => {
     const idx = findHeaderIndex(headers, candidates);
@@ -300,8 +306,6 @@ async function appendPedidoByHeaders(payload: {
   assign(["Ventana"], payload.ventana);
   assign(["ClienteID", "IDCliente"], payload.clienteId);
   assign(["DireccionID", "IDDireccion"], payload.direccionId);
-  assign(["Nombre"], payload.nombre);
-  assign(["Email", "Correo"], payload.email);
 
   await appendRow(`Pedidos!A2:${columnToLetter(headers.length)}5000`, row);
 }
@@ -372,8 +376,6 @@ export async function POST(req: Request) {
         ventana,
         clienteId,
         direccionId,
-        nombre,
-        email,
       });
 
       const inventario = await getSheetData("Inventario!A2:C20");
