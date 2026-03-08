@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getSheetData } from "@/lib/sheets";
+import { applyPromotionsToOrder, getEligiblePromotionsByPhone } from "@/lib/promotions";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
@@ -22,6 +23,22 @@ function readConfig(rows: string[][]): Record<string, string> {
   }, {});
 }
 
+async function getShippingByCp(cpRaw: string): Promise<number | null> {
+  const cp = String(cpRaw).replace(/\D/g, "").slice(0, 5);
+  if (cp.length !== 5) return null;
+
+  const zonas = await getSheetData("Zonas!A2:C3000");
+  const zona = zonas.find((row) => {
+    const cpSheet = String(row[0] ?? "").replace(/\D/g, "").padStart(5, "0");
+    const tipo = String(row[1] ?? "").trim().toUpperCase();
+    const activo = String(row[2] ?? "").trim().toUpperCase();
+    return cpSheet === cp && activo === "TRUE" && (tipo === "GRATIS" || tipo === "PAGO");
+  });
+
+  if (!zona) return null;
+  return String(zona[1] ?? "").trim().toUpperCase() === "GRATIS" ? 0 : 200;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -32,7 +49,6 @@ export async function POST(req: Request) {
       verde = 0,
       roja = 0,
       chilePasado = 0,
-      envio = 0,
       nombre,
       email,
       telefono,
@@ -43,10 +59,6 @@ export async function POST(req: Request) {
       numeroInterior = "",
       fecha,
       ventana,
-      promoId = "",
-      promoTipo = "NONE",
-      promoValor = 0,
-      descuento = 0,
     } = body;
 
     if (!kilos || kilos < 1 || kilos > 4) {
@@ -80,10 +92,30 @@ export async function POST(req: Request) {
       .filter((phone) => phone.length === 10);
     const isQaOrder = qaMode && qaAllowedPhones.includes(normalizePhone(String(telefono)));
 
-    const descuentoAplicado =
-      promoTipo !== "NONE" && Number(promoValor) >= 0
-        ? Math.max(0, Math.round(Number(descuento)))
-        : 0;
+    const envioCalculado = await getShippingByCp(String(cp));
+    if (envioCalculado === null) {
+      return NextResponse.json({
+        success: false,
+        message: "CP fuera de cobertura",
+      });
+    }
+
+    const subtotalProductos =
+      Math.round(Number(kilos) * PRECIO_KILO) +
+      Number(verde) * PRECIO_SALSA +
+      Number(roja) * PRECIO_SALSA +
+      Number(chilePasado) * PRECIO_CHILE;
+
+    const eligiblePromos = await getEligiblePromotionsByPhone(String(telefono));
+    const promoResult = applyPromotionsToOrder(subtotalProductos, envioCalculado, eligiblePromos.promociones);
+    const descuentoAplicado = isQaOrder ? 0 : promoResult.descuento;
+    const envioFinal = isQaOrder ? envioCalculado : promoResult.envioFinal;
+    const appliedPromoIds = promoResult.appliedPromos.map((promo) => promo.promoId).join(",");
+    const appliedPromoType =
+      promoResult.appliedPromos.length > 1
+        ? "MULTI"
+        : (promoResult.appliedPromos[0]?.tipo ?? "NONE");
+    const appliedPromoValue = promoResult.appliedPromos[0]?.valor ?? 0;
 
     const totalBarbacoaBase = Math.round(kilos * PRECIO_KILO);
     const totalBarbacoaConDescuento = Math.max(1, totalBarbacoaBase - descuentoAplicado);
@@ -148,12 +180,12 @@ export async function POST(req: Request) {
         });
       }
 
-      if (envio > 0) {
+      if (envioFinal > 0) {
         lineItems.push({
           price_data: {
             currency: "mxn",
             product_data: { name: "Costo de envío" },
-            unit_amount: envio * 100,
+            unit_amount: envioFinal * 100,
           },
           quantity: 1,
         });
@@ -169,7 +201,7 @@ export async function POST(req: Request) {
         verde: String(verde),
         roja: String(roja),
         chilePasado: String(chilePasado),
-        envio: String(envio),
+        envio: String(envioFinal),
         cp: String(cp),
         nombre: String(nombre),
         email: String(email),
@@ -181,9 +213,9 @@ export async function POST(req: Request) {
         numeroInterior: String(numeroInterior),
         fecha: String(fecha),
         ventana: String(ventana),
-        promoId: String(promoId),
-        promoTipo: String(promoTipo),
-        promoValor: String(promoValor),
+        promoId: String(appliedPromoIds),
+        promoTipo: String(appliedPromoType),
+        promoValor: String(appliedPromoValue),
         descuento: String(descuentoAplicado),
         qaMode: isQaOrder ? "TRUE" : "FALSE",
       },

@@ -315,6 +315,18 @@ async function appendPedidoByHeaders(payload: {
   await appendRow(`Pedidos!A2:${columnToLetter(headers.length)}5000`, row);
 }
 
+async function isSessionAlreadyProcessed(sessionId: string): Promise<boolean> {
+  const rows = await getSheetData("Pedidos!A1:AZ5000");
+  const headers = rows[0] ?? [];
+  const data = rows.slice(1);
+  if (!headers.length) return false;
+
+  const idxId = findHeaderIndex(headers, ["ID", "PedidoID"]);
+  if (idxId < 0) return false;
+
+  return data.some((row) => String(row[idxId] ?? "").trim() === sessionId);
+}
+
 async function sendPaidOrderNotification(payload: {
   qaMode: boolean;
   sessionId: string;
@@ -382,6 +394,11 @@ export async function POST(req: Request) {
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
+      const alreadyProcessed = await isSessionAlreadyProcessed(session.id);
+      if (alreadyProcessed) {
+        return NextResponse.json({ received: true, deduplicated: true });
+      }
+
       const metadata = session.metadata ?? {};
       const qaMode = String(metadata.qaMode ?? "FALSE").toUpperCase() === "TRUE";
 
