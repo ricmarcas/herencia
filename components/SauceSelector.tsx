@@ -32,21 +32,29 @@ export function SauceSelector({
 
   return (
     <>
-      <p className="mb-6 text-sm text-neutral-600">Selecciona hasta {max} salsas en total.</p>
+      <p className="mb-6 text-sm text-neutral-700">Selecciona hasta {max} salsas en total.</p>
 
       {items.map((item) => (
-        <div key={item.key} className="mb-4 flex items-center justify-between">
-          <div>
-            <p>{item.label}</p>
-            <p className="text-sm">${item.precio}</p>
+        <div key={item.key} className="mb-4 rounded-xl border border-neutral-300 bg-white p-3">
+          <div className="mb-2">
+            <p className="font-medium text-neutral-900">{item.label}</p>
+            <p className="text-sm text-neutral-700">${item.precio}</p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => onChangeSauce(item.key, item.value - 1)}>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => onChangeSauce(item.key, item.value - 1)}
+              className="h-9 w-9 rounded-full border-2 border-neutral-500 bg-white text-lg font-semibold text-neutral-900"
+            >
               -
             </button>
-            <span>{item.value}</span>
-            <button type="button" onClick={() => onChangeSauce(item.key, item.value + 1)}>
+            <span className="min-w-8 text-center text-lg font-semibold text-neutral-900">{item.value}</span>
+            <button
+              type="button"
+              onClick={() => onChangeSauce(item.key, item.value + 1)}
+              className="h-9 w-9 rounded-full border-2 border-[#5e452e] bg-[#7a5c3e] text-lg font-semibold text-white"
+            >
               +
             </button>
           </div>
@@ -54,11 +62,11 @@ export function SauceSelector({
       ))}
 
       <div className="flex justify-between">
-        <button type="button" onClick={onBack}>
+        <button type="button" onClick={onBack} className="font-medium text-neutral-700">
           Atras
         </button>
 
-        <button type="button" onClick={onNext} className="rounded-xl bg-[#7a5c3e] px-6 py-3 text-white">
+        <button type="button" onClick={onNext} className="rounded-xl bg-[#7a5c3e] px-6 py-3 font-semibold text-white">
           Continuar
         </button>
       </div>
