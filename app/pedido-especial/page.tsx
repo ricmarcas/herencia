@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 type FormState = {
   nombre: string;
@@ -18,14 +17,11 @@ function isValidEmail(value: string): boolean {
 }
 
 export default function PedidoEspecialPage() {
-  const searchParams = useSearchParams();
-  const cpFromQuery = searchParams.get("cp") ?? "";
-
   const [form, setForm] = useState<FormState>({
     nombre: "",
     telefono: "",
     email: "",
-    cp: cpFromQuery.replace(/\D/g, "").slice(0, 5),
+    cp: "",
     kilos: "5",
     fechaDeseada: "",
     detalles: "",
@@ -38,6 +34,14 @@ export default function PedidoEspecialPage() {
   const emailInvalid = useMemo(() => form.email.trim().length > 0 && !isValidEmail(form.email), [form.email]);
 
   const update = (key: keyof FormState, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cp = (params.get("cp") ?? "").replace(/\D/g, "").slice(0, 5);
+    if (cp) {
+      setForm((prev) => ({ ...prev, cp }));
+    }
+  }, []);
 
   const submit = async () => {
     setError("");
