@@ -3,10 +3,15 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { google } from "googleapis";
+import { Resend } from "resend";
 import { appendRow, getSheetData } from "@/lib/sheets";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET as string;
+const resendApiKey = process.env.RESEND_API_KEY;
+const orderNotificationEmail = process.env.ORDER_NOTIFICATIONS_TO_EMAIL ?? process.env.SPECIAL_ORDERS_TO_EMAIL;
+const resendFromEmail = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 const auth = new google.auth.JWT({
   email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
@@ -310,6 +315,60 @@ async function appendPedidoByHeaders(payload: {
   await appendRow(`Pedidos!A2:${columnToLetter(headers.length)}5000`, row);
 }
 
+async function sendPaidOrderNotification(payload: {
+  qaMode: boolean;
+  sessionId: string;
+  nombre: string;
+  email: string;
+  telefono: string;
+  cp: string;
+  calle: string;
+  colonia: string;
+  numeroExterior: string;
+  numeroInterior: string;
+  kilos: number;
+  verde: number;
+  roja: number;
+  chilePasado: number;
+  envio: number;
+  total: number;
+  fechaEntrega: string;
+}) {
+  if (!resend || !orderNotificationEmail) {
+    return;
+  }
+
+  const interiorText = payload.numeroInterior ? ` Int ${payload.numeroInterior}` : "";
+  const direccion = `${payload.calle} ${payload.numeroExterior}${interiorText}, Col. ${payload.colonia}, CP ${payload.cp}`;
+  const qaLabel = payload.qaMode ? " (ORDEN QA)" : "";
+  const subject = `Nuevo pedido pagado${qaLabel} - ${payload.nombre || payload.telefono}`;
+
+  const html = `
+    <h2>Nuevo pedido pagado${qaLabel}</h2>
+    <p><strong>ID Stripe:</strong> ${payload.sessionId}</p>
+    <p><strong>Nombre:</strong> ${payload.nombre || "No especificado"}</p>
+    <p><strong>Email:</strong> ${payload.email || "No especificado"}</p>
+    <p><strong>Telefono:</strong> ${payload.telefono}</p>
+    <p><strong>Direccion:</strong> ${direccion}</p>
+    <hr />
+    <p><strong>Barbacoa:</strong> ${payload.kilos} kg</p>
+    <p><strong>Salsa Verde:</strong> ${payload.verde}</p>
+    <p><strong>Salsa Roja:</strong> ${payload.roja}</p>
+    <p><strong>Salsa Chile Pasado:</strong> ${payload.chilePasado}</p>
+    <p><strong>Envio:</strong> $${payload.envio} MXN</p>
+    <p><strong>Total pagado:</strong> $${payload.total} MXN</p>
+    <p><strong>Fecha entrega:</strong> ${payload.fechaEntrega || "Sin fecha"}</p>
+  `;
+
+  await resend.emails.send({
+    from: resendFromEmail,
+    to: [orderNotificationEmail],
+    subject,
+    html,
+    replyTo: payload.email || undefined,
+  });
+}
+
 export async function POST(req: Request) {
   try {
     const rawBody = await req.text();
@@ -378,6 +437,30 @@ export async function POST(req: Request) {
         clienteId,
         direccionId,
       });
+
+      try {
+        await sendPaidOrderNotification({
+          qaMode,
+          sessionId: session.id,
+          nombre,
+          email,
+          telefono,
+          cp,
+          calle,
+          colonia,
+          numeroExterior,
+          numeroInterior,
+          kilos,
+          verde,
+          roja,
+          chilePasado,
+          envio,
+          total,
+          fechaEntrega,
+        });
+      } catch (notifyError) {
+        console.error("No se pudo enviar notificacion de pedido pagado:", notifyError);
+      }
 
       if (!qaMode) {
         const inventario = await getSheetData("Inventario!A2:C20");
