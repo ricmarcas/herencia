@@ -56,6 +56,11 @@ export type CheckoutState = {
   envioDatos: DatosEnvio;
   precios: PreciosCatalogo;
   maxKilos: number;
+  saucesStock: {
+    verde: boolean;
+    roja: boolean;
+    chilePasado: boolean;
+  };
   coloniasDisponibles: string[];
   productosCargados: boolean;
   zoneMessage: string;

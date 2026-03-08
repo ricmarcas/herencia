@@ -2,28 +2,30 @@ import type { SauceKey } from "@/types/pedido";
 import type { PreciosCatalogo } from "@/types/producto";
 
 type SauceSelectorProps = {
-  kilos: number;
   verde: number;
   roja: number;
   chilePasado: number;
   precios: PreciosCatalogo;
+  available: {
+    verde: boolean;
+    roja: boolean;
+    chilePasado: boolean;
+  };
   onChangeSauce: (sauce: SauceKey, value: number) => void;
   onBack: () => void;
   onNext: () => void;
 };
 
 export function SauceSelector({
-  kilos,
   verde,
   roja,
   chilePasado,
   precios,
+  available,
   onChangeSauce,
   onBack,
   onNext,
 }: SauceSelectorProps) {
-  const max = kilos * 3;
-
   const items: Array<{ label: string; key: SauceKey; value: number; precio: number }> = [
     { label: "Salsa Verde (300ml)", key: "verde", value: verde, precio: precios.verde },
     { label: "Salsa Roja (300ml)", key: "roja", value: roja, precio: precios.roja },
@@ -32,9 +34,13 @@ export function SauceSelector({
 
   return (
     <>
-      <p className="mb-6 text-sm text-neutral-700">Selecciona hasta {max} salsas en total.</p>
+      <p className="mb-6 text-sm text-neutral-700">
+        Recomendamos 300ml de salsa por cada kilo de barbacoa.
+      </p>
 
-      {items.map((item) => (
+      {items
+        .filter((item) => available[item.key])
+        .map((item) => (
         <div key={item.key} className="mb-4 rounded-xl border border-neutral-300 bg-white p-3">
           <div className="mb-2">
             <p className="font-medium text-neutral-900">{item.label}</p>
@@ -60,6 +66,12 @@ export function SauceSelector({
           </div>
         </div>
       ))}
+
+      {!available.verde && !available.roja && !available.chilePasado ? (
+        <p className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+          Por el momento no hay salsas disponibles.
+        </p>
+      ) : null}
 
       <div className="flex justify-between">
         <button type="button" onClick={onBack} className="font-medium text-neutral-700">

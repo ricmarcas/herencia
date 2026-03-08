@@ -3,6 +3,7 @@ import type {
   ColoniasResponse,
   MaxInventoryResponse,
   PromoResponse,
+  SauceStockResponse,
   ProductosResponse,
   ValidateInventoryResponse,
   ValidateZoneResponse,
@@ -34,6 +35,11 @@ export async function getProductos(): Promise<ProductosResponse> {
 export async function getMaxInventory(): Promise<MaxInventoryResponse> {
   const response = await fetch("/api/max-inventory");
   return parseJson<MaxInventoryResponse>(response);
+}
+
+export async function getSauceStock(): Promise<SauceStockResponse> {
+  const response = await fetch("/api/sauce-stock");
+  return parseJson<SauceStockResponse>(response);
 }
 
 export async function getColonias(cp: string): Promise<ColoniasResponse> {

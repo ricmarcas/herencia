@@ -6,6 +6,7 @@ import {
   getColonias,
   getMaxInventory,
   getProductos,
+  getSauceStock,
   validateInventory,
   validatePromo,
   validateZone,
@@ -56,6 +57,11 @@ const initialState: CheckoutState = {
     chilePasado: 0,
   },
   maxKilos: 4,
+  saucesStock: {
+    verde: true,
+    roja: true,
+    chilePasado: true,
+  },
   coloniasDisponibles: [],
   productosCargados: false,
   zoneMessage: "",
@@ -83,6 +89,7 @@ type CheckoutAction =
   | { type: "SET_COLONIAS"; payload: string[] }
   | { type: "SET_PRODUCTOS_CARGADOS"; payload: boolean }
   | { type: "SET_MAX_KILOS"; payload: number }
+  | { type: "SET_SAUCE_STOCK"; payload: { verde: boolean; roja: boolean; chilePasado: boolean } }
   | { type: "SET_KILOS"; payload: number }
   | { type: "SET_SAUCE"; payload: { key: SauceKey; value: number } }
   | { type: "SET_FECHA"; payload: string }
@@ -233,6 +240,18 @@ function checkoutReducer(state: CheckoutState, action: CheckoutAction): Checkout
 
     case "SET_MAX_KILOS":
       return { ...state, maxKilos: action.payload };
+
+    case "SET_SAUCE_STOCK":
+      return {
+        ...state,
+        saucesStock: action.payload,
+        pedido: {
+          ...state.pedido,
+          verde: action.payload.verde ? state.pedido.verde : 0,
+          roja: action.payload.roja ? state.pedido.roja : 0,
+          chilePasado: action.payload.chilePasado ? state.pedido.chilePasado : 0,
+        },
+      };
 
     case "SET_KILOS": {
       const kilos = action.payload;
@@ -417,10 +436,11 @@ export function useCheckout() {
         payload: zone.envio === 0 ? "Entregamos en tu zona - Envio GRATIS" : `Entregamos en tu zona - Envio $${zone.envio}`,
       });
 
-      const [products, inventory, coloniasResponse] = await Promise.all([
+      const [products, inventory, coloniasResponse, sauceStock] = await Promise.all([
         getProductos(),
         getMaxInventory(),
         getColonias(cpLimpio),
+        getSauceStock(),
       ]);
 
       if (products.success) {
@@ -439,6 +459,17 @@ export function useCheckout() {
         dispatch({ type: "SET_COLONIAS", payload: coloniasResponse.colonias });
       } else {
         dispatch({ type: "SET_COLONIAS", payload: [] });
+      }
+
+      if (sauceStock.success) {
+        dispatch({
+          type: "SET_SAUCE_STOCK",
+          payload: {
+            verde: sauceStock.verde,
+            roja: sauceStock.roja,
+            chilePasado: sauceStock.chilePasado,
+          },
+        });
       }
 
       dispatch({ type: "SET_STEP", payload: 2 });
@@ -498,7 +529,7 @@ export function useCheckout() {
   };
 
   const nextStep = async (): Promise<boolean> => {
-    if (state.step === 2 || state.step === 3) {
+    if (state.step === 3) {
       try {
         const inventoryCheck = await validateInventory({
           kilos: state.pedido.kilos,

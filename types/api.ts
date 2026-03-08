@@ -21,6 +21,13 @@ export type ValidateInventoryResponse = {
   message?: string;
 };
 
+export type SauceStockResponse = {
+  success: boolean;
+  verde: boolean;
+  roja: boolean;
+  chilePasado: boolean;
+};
+
 export type CheckoutResponse = {
   success: boolean;
   url?: string;

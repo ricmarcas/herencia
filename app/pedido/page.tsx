@@ -392,11 +392,11 @@ export default function PedidoPage() {
 
         {state.step === 3 ? (
           <SauceSelector
-            kilos={state.pedido.kilos}
             verde={state.pedido.verde}
             roja={state.pedido.roja}
             chilePasado={state.pedido.chilePasado}
             precios={state.precios}
+            available={state.saucesStock}
             onChangeSauce={actions.setSauce}
             onBack={actions.backStep}
             onNext={actions.nextStep}
