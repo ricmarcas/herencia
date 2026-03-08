@@ -1,4 +1,5 @@
 import type { Producto } from "./producto";
+import type { PromoRule } from "./pedido";
 
 export type ValidateZoneResponse = {
   success: boolean;
@@ -13,6 +14,11 @@ export type ProductosResponse = {
 export type MaxInventoryResponse = {
   success: boolean;
   maxKilos: number;
+};
+
+export type ValidateInventoryResponse = {
+  success: boolean;
+  message?: string;
 };
 
 export type CheckoutResponse = {
@@ -33,4 +39,3 @@ export type PromoResponse = {
   telefono: string;
   message?: string;
 };
-import type { PromoRule } from "./pedido";

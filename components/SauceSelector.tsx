@@ -25,9 +25,9 @@ export function SauceSelector({
   const max = kilos * 3;
 
   const items: Array<{ label: string; key: SauceKey; value: number; precio: number }> = [
-    { label: "Salsa Verde", key: "verde", value: verde, precio: precios.verde },
-    { label: "Salsa Roja", key: "roja", value: roja, precio: precios.roja },
-    { label: "Salsa de Chile Pasado", key: "chilePasado", value: chilePasado, precio: precios.chilePasado },
+    { label: "Salsa Verde (300ml)", key: "verde", value: verde, precio: precios.verde },
+    { label: "Salsa Roja (300ml)", key: "roja", value: roja, precio: precios.roja },
+    { label: "Salsa de Chile Pasado (300ml)", key: "chilePasado", value: chilePasado, precio: precios.chilePasado },
   ];
 
   return (

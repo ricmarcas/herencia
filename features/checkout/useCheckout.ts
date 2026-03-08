@@ -6,6 +6,7 @@ import {
   getColonias,
   getMaxInventory,
   getProductos,
+  validateInventory,
   validatePromo,
   validateZone,
 } from "@/services/api";
@@ -496,7 +497,32 @@ export function useCheckout() {
     }
   };
 
-  const nextStep = (): boolean => {
+  const nextStep = async (): Promise<boolean> => {
+    if (state.step === 2 || state.step === 3) {
+      try {
+        const inventoryCheck = await validateInventory({
+          kilos: state.pedido.kilos,
+          verde: state.pedido.verde,
+          roja: state.pedido.roja,
+          chilePasado: state.pedido.chilePasado,
+        });
+
+        if (!inventoryCheck.success) {
+          dispatch({
+            type: "SET_ERROR",
+            payload: inventoryCheck.message ?? "Inventario insuficiente para completar tu pedido.",
+          });
+          return false;
+        }
+      } catch {
+        dispatch({
+          type: "SET_ERROR",
+          payload: "No fue posible validar inventario en este momento.",
+        });
+        return false;
+      }
+    }
+
     const validationError = getValidationError(state);
     if (validationError) {
       dispatch({ type: "SET_ERROR", payload: validationError });

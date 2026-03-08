@@ -119,21 +119,21 @@ function ConfirmationStep({
 
         {pedido.verde > 0 ? (
           <div className="mb-1 flex justify-between text-neutral-700">
-            <span>Salsa Verde x{pedido.verde} (${precios.verde} c/u)</span>
+            <span>Salsa Verde (300ml) x{pedido.verde} (${precios.verde} c/u)</span>
             <span>${pedido.verde * precios.verde}</span>
           </div>
         ) : null}
 
         {pedido.roja > 0 ? (
           <div className="mb-1 flex justify-between text-neutral-700">
-            <span>Salsa Roja x{pedido.roja} (${precios.roja} c/u)</span>
+            <span>Salsa Roja (300ml) x{pedido.roja} (${precios.roja} c/u)</span>
             <span>${pedido.roja * precios.roja}</span>
           </div>
         ) : null}
 
         {pedido.chilePasado > 0 ? (
           <div className="mb-1 flex justify-between text-neutral-700">
-            <span>Salsa Chile Pasado x{pedido.chilePasado} (${precios.chilePasado} c/u)</span>
+            <span>Salsa Chile Pasado (300ml) x{pedido.chilePasado} (${precios.chilePasado} c/u)</span>
             <span>${pedido.chilePasado * precios.chilePasado}</span>
           </div>
         ) : null}
@@ -451,7 +451,7 @@ export default function PedidoPage() {
           <PaymentStep total={totals.total} isPaying={state.isPaying} onBack={actions.backStep} onPay={goToPayment} />
         ) : null}
 
-        {state.step > 1 ? <OrderSummary envio={totals.envioFinal} totals={totals} /> : null}
+        {state.step > 1 && state.step !== 5 ? <OrderSummary envio={totals.envioFinal} totals={totals} /> : null}
       </div>
     </main>
   );

@@ -4,6 +4,7 @@ import type {
   MaxInventoryResponse,
   PromoResponse,
   ProductosResponse,
+  ValidateInventoryResponse,
   ValidateZoneResponse,
 } from "@/types/api";
 import type { PedidoPayload } from "@/types/pedido";
@@ -59,4 +60,19 @@ export async function validatePromo(telefono: string): Promise<PromoResponse> {
   });
 
   return parseJson<PromoResponse>(response);
+}
+
+export async function validateInventory(payload: {
+  kilos: number;
+  verde: number;
+  roja: number;
+  chilePasado: number;
+}): Promise<ValidateInventoryResponse> {
+  const response = await fetch("/api/validate-inventory", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  return parseJson<ValidateInventoryResponse>(response);
 }
