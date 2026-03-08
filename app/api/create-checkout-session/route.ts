@@ -71,7 +71,7 @@ export async function POST(req: Request) {
     const configRows = await getSheetData("Configuracion!A2:B300");
     const config = readConfig(configRows);
     const qaMode = String(config.QA_MODE ?? "FALSE").toUpperCase() === "TRUE";
-    const qaPrice = Math.max(1, Number(config.QA_TEST_PRICE_MXN ?? "1"));
+    const qaPrice = Math.max(10, Number(config.QA_TEST_PRICE_MXN ?? "10"));
     const fallbackQaPhones = "5514928475,5530462228";
     const qaAllowedPhonesRaw = String(config.QA_ALLOWED_PHONES ?? fallbackQaPhones);
     const qaAllowedPhones = qaAllowedPhonesRaw
