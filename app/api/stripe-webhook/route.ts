@@ -324,6 +324,7 @@ export async function POST(req: Request) {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const metadata = session.metadata ?? {};
+      const qaMode = String(metadata.qaMode ?? "FALSE").toUpperCase() === "TRUE";
 
       const kilos = Number(metadata.kilos ?? 0);
       const verde = Number(metadata.verde ?? 0);
@@ -378,48 +379,50 @@ export async function POST(req: Request) {
         direccionId,
       });
 
-      const inventario = await getSheetData("Inventario!A2:C20");
+      if (!qaMode) {
+        const inventario = await getSheetData("Inventario!A2:C20");
 
-      const updatedRows = inventario.map((row) => {
-        const [producto, presentacion, stockRaw] = row;
-        let stock = Number(stockRaw);
+        const updatedRows = inventario.map((row) => {
+          const [producto, presentacion, stockRaw] = row;
+          let stock = Number(stockRaw);
 
-        if (producto === "Barbacoa" && presentacion === "1kg") {
-          const usar1kg = Math.min(Math.floor(kilos), stock);
-          stock -= usar1kg;
-        }
-
-        if (producto === "Barbacoa" && presentacion === "0.5kg") {
-          const restante = kilos - Math.floor(kilos);
-          if (restante > 0) {
-            const usar05 = restante / 0.5;
-            stock -= usar05;
+          if (producto === "Barbacoa" && presentacion === "1kg") {
+            const usar1kg = Math.min(Math.floor(kilos), stock);
+            stock -= usar1kg;
           }
-        }
 
-        if (producto === "Salsa Verde") {
-          stock -= verde;
-        }
+          if (producto === "Barbacoa" && presentacion === "0.5kg") {
+            const restante = kilos - Math.floor(kilos);
+            if (restante > 0) {
+              const usar05 = restante / 0.5;
+              stock -= usar05;
+            }
+          }
 
-        if (producto === "Salsa Roja") {
-          stock -= roja;
-        }
+          if (producto === "Salsa Verde") {
+            stock -= verde;
+          }
 
-        if (producto === "Salsa de Chile Pasado") {
-          stock -= chilePasado;
-        }
+          if (producto === "Salsa Roja") {
+            stock -= roja;
+          }
 
-        return [producto, presentacion, stock];
-      });
+          if (producto === "Salsa de Chile Pasado") {
+            stock -= chilePasado;
+          }
 
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: process.env.GOOGLE_SHEET_ID,
-        range: "Inventario!A2:C20",
-        valueInputOption: "RAW",
-        requestBody: {
-          values: updatedRows,
-        },
-      });
+          return [producto, presentacion, stock];
+        });
+
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: process.env.GOOGLE_SHEET_ID,
+          range: "Inventario!A2:C20",
+          valueInputOption: "RAW",
+          requestBody: {
+            values: updatedRows,
+          },
+        });
+      }
     }
 
     return NextResponse.json({ received: true });

@@ -3,8 +3,24 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import { getSheetData } from "@/lib/sheets";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+
+function normalizePhone(value: string): string {
+  return value.replace(/\D/g, "").slice(0, 10);
+}
+
+function readConfig(rows: string[][]): Record<string, string> {
+  return rows.reduce<Record<string, string>>((acc, row) => {
+    const key = String(row[0] ?? "").trim();
+    const value = String(row[1] ?? "").trim();
+    if (key) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+}
 
 export async function POST(req: Request) {
   try {
@@ -52,6 +68,18 @@ export async function POST(req: Request) {
     const PRECIO_SALSA = 50;
     const PRECIO_CHILE = 80;
 
+    const configRows = await getSheetData("Configuracion!A2:B300");
+    const config = readConfig(configRows);
+    const qaMode = String(config.QA_MODE ?? "FALSE").toUpperCase() === "TRUE";
+    const qaPrice = Math.max(1, Number(config.QA_TEST_PRICE_MXN ?? "1"));
+    const fallbackQaPhones = "5514928475,5530462228";
+    const qaAllowedPhonesRaw = String(config.QA_ALLOWED_PHONES ?? fallbackQaPhones);
+    const qaAllowedPhones = qaAllowedPhonesRaw
+      .split(",")
+      .map((phone) => normalizePhone(phone))
+      .filter((phone) => phone.length === 10);
+    const isQaOrder = qaMode && qaAllowedPhones.includes(normalizePhone(String(telefono)));
+
     const descuentoAplicado =
       promoTipo !== "NONE" && Number(promoValor) >= 0
         ? Math.max(0, Math.round(Number(descuento)))
@@ -60,61 +88,76 @@ export async function POST(req: Request) {
     const totalBarbacoaBase = Math.round(kilos * PRECIO_KILO);
     const totalBarbacoaConDescuento = Math.max(1, totalBarbacoaBase - descuentoAplicado);
 
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
-      {
-        price_data: {
-          currency: "mxn",
-          product_data: {
-            name: `Barbacoa Herencia (${kilos} kg)`,
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = isQaOrder
+      ? [
+          {
+            price_data: {
+              currency: "mxn",
+              product_data: {
+                name: "Orden QA Herencia",
+              },
+              unit_amount: qaPrice * 100,
+            },
+            quantity: 1,
           },
-          unit_amount: totalBarbacoaConDescuento * 100,
-        },
-        quantity: 1,
-      },
-    ];
+        ]
+      : [
+          {
+            price_data: {
+              currency: "mxn",
+              product_data: {
+                name: `Barbacoa Herencia (${kilos} kg)`,
+              },
+              unit_amount: totalBarbacoaConDescuento * 100,
+            },
+            quantity: 1,
+          },
+        ];
 
-    if (verde > 0) {
-      lineItems.push({
-        price_data: {
-          currency: "mxn",
-          product_data: { name: "Salsa Verde 300ml" },
-          unit_amount: PRECIO_SALSA * 100,
-        },
-        quantity: verde,
-      });
-    }
+    if (!isQaOrder) {
+      if (verde > 0) {
+        lineItems.push({
+          price_data: {
+            currency: "mxn",
+            product_data: { name: "Salsa Verde 300ml" },
+            unit_amount: PRECIO_SALSA * 100,
+          },
+          quantity: verde,
+        });
+      }
 
-    if (roja > 0) {
-      lineItems.push({
-        price_data: {
-          currency: "mxn",
-          product_data: { name: "Salsa Roja 300ml" },
-          unit_amount: PRECIO_SALSA * 100,
-        },
-        quantity: roja,
-      });
-    }
+      if (roja > 0) {
+        lineItems.push({
+          price_data: {
+            currency: "mxn",
+            product_data: { name: "Salsa Roja 300ml" },
+            unit_amount: PRECIO_SALSA * 100,
+          },
+          quantity: roja,
+        });
+      }
 
-    if (chilePasado > 0) {
-      lineItems.push({
-        price_data: {
-          currency: "mxn",
-          product_data: { name: "Salsa de Chile Pasado 300ml" },
-          unit_amount: PRECIO_CHILE * 100,
-        },
-        quantity: chilePasado,
-      });
-    }
+      if (chilePasado > 0) {
+        lineItems.push({
+          price_data: {
+            currency: "mxn",
+            product_data: { name: "Salsa de Chile Pasado 300ml" },
+            unit_amount: PRECIO_CHILE * 100,
+          },
+          quantity: chilePasado,
+        });
+      }
 
-    if (envio > 0) {
-      lineItems.push({
-        price_data: {
-          currency: "mxn",
-          product_data: { name: "Costo de envío" },
-          unit_amount: envio * 100,
-        },
-        quantity: 1,
-      });
+      if (envio > 0) {
+        lineItems.push({
+          price_data: {
+            currency: "mxn",
+            product_data: { name: "Costo de envío" },
+            unit_amount: envio * 100,
+          },
+          quantity: 1,
+        });
+      }
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -142,6 +185,7 @@ export async function POST(req: Request) {
         promoTipo: String(promoTipo),
         promoValor: String(promoValor),
         descuento: String(descuentoAplicado),
+        qaMode: isQaOrder ? "TRUE" : "FALSE",
       },
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cancel`,
