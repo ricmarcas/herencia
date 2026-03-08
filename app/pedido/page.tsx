@@ -381,14 +381,14 @@ export default function PedidoPage() {
             <ProductSelector
               kilos={state.pedido.kilos}
               maxKilos={state.maxKilos}
-              envio={state.pedido.envio}
-              onSelectKilos={actions.setKilos}
-              onBack={actions.backStep}
-              onNext={actions.nextStep}
-              onSpecialOrder={() => router.push("/pedido-especial")}
-            />
-          </>
-        ) : null}
+            envio={state.pedido.envio}
+            onSelectKilos={actions.setKilos}
+            onBack={actions.backStep}
+            onNext={actions.nextStep}
+            onSpecialOrder={() => router.push(`/pedido-especial?cp=${state.pedido.cp}`)}
+          />
+        </>
+      ) : null}
 
         {state.step === 3 ? (
           <SauceSelector
