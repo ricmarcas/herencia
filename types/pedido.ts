@@ -21,6 +21,10 @@ export type PedidoPayload = {
   numeroInterior: string;
   fecha: string;
   ventana: string;
+  promoId: string;
+  promoTipo: "NONE" | "PERCENT";
+  promoValor: number;
+  descuento: number;
 };
 
 export type DatosEnvio = {
@@ -45,10 +49,24 @@ export type CheckoutState = {
   error: string;
   isLoading: boolean;
   isPaying: boolean;
+  promoLookupPhone: string;
+  promoMessage: string;
+  isPromoLoading: boolean;
+  promo: {
+    promoId: string;
+    nombre: string;
+    descripcion: string;
+    tipo: "NONE" | "PERCENT";
+    valor: number;
+    descuento: number;
+    telefono: string;
+  } | null;
 };
 
 export type Totales = {
   totalBarbacoa: number;
   totalSalsas: number;
+  subtotal: number;
+  descuento: number;
   total: number;
 };

@@ -27,6 +27,10 @@ export async function POST(req: Request) {
       numeroInterior = "",
       fecha,
       ventana,
+      promoId = "",
+      promoTipo = "NONE",
+      promoValor = 0,
+      descuento = 0,
     } = body;
 
     if (!kilos || kilos < 1 || kilos > 4) {
@@ -48,6 +52,14 @@ export async function POST(req: Request) {
     const PRECIO_SALSA = 50;
     const PRECIO_CHILE = 80;
 
+    const descuentoAplicado =
+      promoTipo === "PERCENT" && Number(promoValor) > 0
+        ? Math.max(0, Math.round(Number(descuento)))
+        : 0;
+
+    const totalBarbacoaBase = Math.round(kilos * PRECIO_KILO);
+    const totalBarbacoaConDescuento = Math.max(1, totalBarbacoaBase - descuentoAplicado);
+
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
       {
         price_data: {
@@ -55,7 +67,7 @@ export async function POST(req: Request) {
           product_data: {
             name: `Barbacoa Herencia (${kilos} kg)`,
           },
-          unit_amount: Math.round(kilos * PRECIO_KILO * 100),
+          unit_amount: totalBarbacoaConDescuento * 100,
         },
         quantity: 1,
       },
@@ -126,6 +138,10 @@ export async function POST(req: Request) {
         numeroInterior: String(numeroInterior),
         fecha: String(fecha),
         ventana: String(ventana),
+        promoId: String(promoId),
+        promoTipo: String(promoTipo),
+        promoValor: String(promoValor),
+        descuento: String(descuentoAplicado),
       },
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cancel`,

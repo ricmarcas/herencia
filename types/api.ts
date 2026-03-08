@@ -26,3 +26,16 @@ export type ColoniasResponse = {
   colonias: string[];
   message?: string;
 };
+
+export type PromoResponse = {
+  success: boolean;
+  promo: {
+    promoId: string;
+    nombre: string;
+    descripcion: string;
+    tipo: "NONE" | "PERCENT";
+    valor: number;
+    telefono: string;
+  } | null;
+  message?: string;
+};

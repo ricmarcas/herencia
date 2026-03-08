@@ -1,7 +1,14 @@
 "use client";
 
 import { useMemo, useReducer } from "react";
-import { createCheckoutSession, getColonias, getMaxInventory, getProductos, validateZone } from "@/services/api";
+import {
+  createCheckoutSession,
+  getColonias,
+  getMaxInventory,
+  getProductos,
+  validatePromo,
+  validateZone,
+} from "@/services/api";
 import type { CheckoutStep, PedidoPayload, SauceKey, Totales } from "@/types/pedido";
 import type { CheckoutState } from "@/types/pedido";
 import type { PreciosCatalogo, Producto } from "@/types/producto";
@@ -27,6 +34,10 @@ const initialState: CheckoutState = {
     numeroInterior: "",
     fecha: "",
     ventana: DEFAULT_DELIVERY_WINDOW,
+    promoId: "",
+    promoTipo: "NONE",
+    promoValor: 0,
+    descuento: 0,
   },
   envioDatos: {
     nombre: "",
@@ -50,13 +61,19 @@ const initialState: CheckoutState = {
   error: "",
   isLoading: false,
   isPaying: false,
+  promoLookupPhone: "",
+  promoMessage: "",
+  isPromoLoading: false,
+  promo: null,
 };
 
 type CheckoutAction =
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_PAYING"; payload: boolean }
+  | { type: "SET_PROMO_LOADING"; payload: boolean }
   | { type: "SET_ERROR"; payload: string }
   | { type: "SET_ZONE_MESSAGE"; payload: string }
+  | { type: "SET_PROMO_MESSAGE"; payload: string }
   | { type: "SET_STEP"; payload: CheckoutStep }
   | { type: "NEXT_STEP" }
   | { type: "PREV_STEP" }
@@ -74,7 +91,19 @@ type CheckoutAction =
   | { type: "SET_CALLE"; payload: string }
   | { type: "SET_NUMERO_EXTERIOR"; payload: string }
   | { type: "SET_NUMERO_INTERIOR"; payload: string }
-  | { type: "SET_COLONIA"; payload: string };
+  | { type: "SET_COLONIA"; payload: string }
+  | { type: "SET_PROMO_LOOKUP_PHONE"; payload: string }
+  | {
+      type: "SET_PROMO";
+      payload: {
+        promoId: string;
+        nombre: string;
+        descripcion: string;
+        tipo: "NONE" | "PERCENT";
+        valor: number;
+        telefono: string;
+      } | null;
+    };
 
 function toPrecios(productos: Producto[]): PreciosCatalogo {
   const buscar = (nombre: string) => productos.find((item) => item.nombre === nombre)?.precio ?? 0;
@@ -133,7 +162,7 @@ function isDateInRange(value: string): boolean {
 }
 
 function isValidEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
 function buildDireccion(state: CheckoutState): string {
@@ -151,11 +180,17 @@ function checkoutReducer(state: CheckoutState, action: CheckoutAction): Checkout
     case "SET_PAYING":
       return { ...state, isPaying: action.payload };
 
+    case "SET_PROMO_LOADING":
+      return { ...state, isPromoLoading: action.payload };
+
     case "SET_ERROR":
       return { ...state, error: action.payload };
 
     case "SET_ZONE_MESSAGE":
       return { ...state, zoneMessage: action.payload };
+
+    case "SET_PROMO_MESSAGE":
+      return { ...state, promoMessage: action.payload };
 
     case "SET_STEP":
       return { ...state, step: action.payload };
@@ -177,11 +212,17 @@ function checkoutReducer(state: CheckoutState, action: CheckoutAction): Checkout
           ...state.pedido,
           cp: action.payload.cp,
           envio: action.payload.envio,
+          promoId: "",
+          promoTipo: "NONE",
+          promoValor: 0,
+          descuento: 0,
         },
         envioDatos: {
           ...state.envioDatos,
           colonia: "",
         },
+        promo: null,
+        promoMessage: "",
       };
 
     case "SET_PRECIOS":
@@ -226,7 +267,7 @@ function checkoutReducer(state: CheckoutState, action: CheckoutAction): Checkout
       return { ...state, envioDatos: { ...state.envioDatos, nombre: action.payload } };
 
     case "SET_EMAIL":
-      return { ...state, envioDatos: { ...state.envioDatos, email: action.payload.trim() } };
+      return { ...state, envioDatos: { ...state.envioDatos, email: action.payload } };
 
     case "SET_TELEFONO":
       return { ...state, envioDatos: { ...state.envioDatos, telefono: normalizePhone(action.payload) } };
@@ -242,6 +283,26 @@ function checkoutReducer(state: CheckoutState, action: CheckoutAction): Checkout
 
     case "SET_COLONIA":
       return { ...state, envioDatos: { ...state.envioDatos, colonia: action.payload } };
+
+    case "SET_PROMO_LOOKUP_PHONE":
+      return { ...state, promoLookupPhone: normalizePhone(action.payload) };
+
+    case "SET_PROMO":
+      return {
+        ...state,
+        promo: action.payload
+          ? { ...action.payload, descuento: state.promo?.descuento ?? 0 }
+          : null,
+        pedido: {
+          ...state.pedido,
+          promoId: action.payload?.promoId ?? "",
+          promoTipo: action.payload?.tipo ?? "NONE",
+          promoValor: action.payload?.valor ?? 0,
+        },
+        envioDatos: action.payload
+          ? { ...state.envioDatos, telefono: action.payload.telefono }
+          : state.envioDatos,
+      };
 
     default:
       return state;
@@ -285,10 +346,18 @@ function computeTotals(state: CheckoutState): Totales {
     state.pedido.roja * state.precios.roja +
     state.pedido.chilePasado * state.precios.chilePasado;
 
+  const subtotal = totalBarbacoa + totalSalsas;
+  const descuento =
+    state.pedido.promoTipo === "PERCENT" && state.pedido.promoValor > 0
+      ? Math.round((subtotal * state.pedido.promoValor) / 100)
+      : 0;
+
   return {
     totalBarbacoa,
     totalSalsas,
-    total: totalBarbacoa + totalSalsas + state.pedido.envio,
+    subtotal,
+    descuento,
+    total: subtotal - descuento + state.pedido.envio,
   };
 }
 
@@ -354,6 +423,46 @@ export function useCheckout() {
     }
   };
 
+  const validateCustomerPromo = async (): Promise<boolean> => {
+    const telefono = state.promoLookupPhone;
+    if (telefono.length !== 10) {
+      dispatch({ type: "SET_PROMO_MESSAGE", payload: "Ingresa un telefono de 10 digitos para consultar promociones." });
+      return false;
+    }
+
+    dispatch({ type: "SET_PROMO_LOADING", payload: true });
+    dispatch({ type: "SET_PROMO_MESSAGE", payload: "" });
+
+    try {
+      const response = await validatePromo(telefono);
+
+      if (!response.success) {
+        dispatch({ type: "SET_PROMO", payload: null });
+        dispatch({ type: "SET_PROMO_MESSAGE", payload: response.message ?? "No se pudo validar la promocion." });
+        return false;
+      }
+
+      if (!response.promo) {
+        dispatch({ type: "SET_PROMO", payload: null });
+        dispatch({ type: "SET_PROMO_MESSAGE", payload: response.message ?? "No hay promociones vigentes para este telefono." });
+        return true;
+      }
+
+      dispatch({ type: "SET_PROMO", payload: response.promo });
+      dispatch({
+        type: "SET_PROMO_MESSAGE",
+        payload: `${response.promo.nombre}: ${response.promo.descripcion}`,
+      });
+      return true;
+    } catch {
+      dispatch({ type: "SET_PROMO", payload: null });
+      dispatch({ type: "SET_PROMO_MESSAGE", payload: "Error consultando promociones." });
+      return false;
+    } finally {
+      dispatch({ type: "SET_PROMO_LOADING", payload: false });
+    }
+  };
+
   const nextStep = (): boolean => {
     const validationError = getValidationError(state);
     if (validationError) {
@@ -386,6 +495,7 @@ export function useCheckout() {
         colonia: state.envioDatos.colonia.trim(),
         numeroExterior: state.envioDatos.numeroExterior.trim(),
         numeroInterior: state.envioDatos.numeroInterior.trim(),
+        descuento: totals.descuento,
       };
 
       const response = await createCheckoutSession(payload);
@@ -410,6 +520,7 @@ export function useCheckout() {
     coloniasDisponibles: state.coloniasDisponibles,
     actions: {
       validateAndLoadZone,
+      validateCustomerPromo,
       nextStep,
       backStep,
       startPayment,
@@ -423,6 +534,7 @@ export function useCheckout() {
       setNumeroExterior: (numeroExterior: string) => dispatch({ type: "SET_NUMERO_EXTERIOR", payload: numeroExterior }),
       setNumeroInterior: (numeroInterior: string) => dispatch({ type: "SET_NUMERO_INTERIOR", payload: numeroInterior }),
       setColonia: (colonia: string) => dispatch({ type: "SET_COLONIA", payload: colonia }),
+      setPromoLookupPhone: (telefono: string) => dispatch({ type: "SET_PROMO_LOOKUP_PHONE", payload: telefono }),
     },
   };
 }

@@ -2,6 +2,7 @@ import type {
   CheckoutResponse,
   ColoniasResponse,
   MaxInventoryResponse,
+  PromoResponse,
   ProductosResponse,
   ValidateZoneResponse,
 } from "@/types/api";
@@ -48,4 +49,14 @@ export async function createCheckoutSession(pedido: PedidoPayload): Promise<Chec
   });
 
   return parseJson<CheckoutResponse>(response);
+}
+
+export async function validatePromo(telefono: string): Promise<PromoResponse> {
+  const response = await fetch("/api/validate-promo", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ telefono }),
+  });
+
+  return parseJson<PromoResponse>(response);
 }
