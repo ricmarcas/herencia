@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type FormState = {
   nombre: string;
@@ -17,6 +18,7 @@ function isValidEmail(value: string): boolean {
 }
 
 export default function PedidoEspecialPage() {
+  const router = useRouter();
   const [form, setForm] = useState<FormState>({
     nombre: "",
     telefono: "",
@@ -28,7 +30,6 @@ export default function PedidoEspecialPage() {
   });
 
   const [sending, setSending] = useState(false);
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   const emailInvalid = useMemo(() => form.email.trim().length > 0 && !isValidEmail(form.email), [form.email]);
@@ -45,7 +46,6 @@ export default function PedidoEspecialPage() {
 
   const submit = async () => {
     setError("");
-    setMessage("");
 
     if (!form.nombre.trim()) return setError("Ingresa tu nombre.");
     if (form.telefono.replace(/\D/g, "").length !== 10) return setError("Ingresa un telefono de 10 digitos.");
@@ -78,8 +78,7 @@ export default function PedidoEspecialPage() {
         return;
       }
 
-      setMessage("Tu pedido especial fue enviado. Te contactaremos pronto.");
-      setForm((prev) => ({ ...prev, detalles: "" }));
+      router.push("/pedido-especial/enviado");
     } catch {
       setError("Error enviando solicitud. Intenta de nuevo.");
     } finally {
@@ -101,14 +100,15 @@ export default function PedidoEspecialPage() {
             {emailInvalid ? <p className="mt-1 text-xs text-red-600">Formato de email invalido.</p> : null}
           </div>
           <input value={form.cp} onChange={(e) => update("cp", e.target.value.replace(/\D/g, "").slice(0, 5))} placeholder="Codigo postal" inputMode="numeric" className="w-full rounded-xl border px-4 py-3" />
-          <input value={form.kilos} onChange={(e) => update("kilos", e.target.value)} type="number" min={5} step={0.5} placeholder="Kilos solicitados" className="w-full rounded-xl border px-4 py-3" />
+          <div>
+            <label className="mb-1 block text-sm text-neutral-600">Kilos solicitados (kg, minimo 5)</label>
+            <input value={form.kilos} onChange={(e) => update("kilos", e.target.value)} type="number" min={5} step={0.5} placeholder="Ej. 5" className="w-full rounded-xl border px-4 py-3" />
+          </div>
           <input value={form.fechaDeseada} onChange={(e) => update("fechaDeseada", e.target.value)} type="date" className="w-full rounded-xl border px-4 py-3" />
           <textarea value={form.detalles} onChange={(e) => update("detalles", e.target.value)} placeholder="Necesidades especiales (evento, horario, observaciones)" className="h-32 w-full rounded-xl border px-4 py-3" />
         </div>
 
         {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
-        {message ? <p className="mt-4 text-sm text-green-700">{message}</p> : null}
-
         <button onClick={submit} disabled={sending} className="mt-6 w-full rounded-xl bg-[#7a5c3e] py-3 text-white disabled:cursor-not-allowed disabled:opacity-60">
           {sending ? "Enviando..." : "Enviar pedido especial"}
         </button>

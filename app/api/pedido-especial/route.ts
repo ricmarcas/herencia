@@ -6,6 +6,7 @@ import { Resend } from "resend";
 const resendApiKey = process.env.RESEND_API_KEY;
 const toEmail = process.env.SPECIAL_ORDERS_TO_EMAIL;
 const fromEmail = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
+const noReplyEmail = process.env.RESEND_NO_REPLY_EMAIL ?? fromEmail;
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
@@ -58,6 +59,30 @@ export async function POST(req: Request) {
       subject,
       html,
     });
+
+    const confirmationHtml = `
+      <h2>Recibimos tu pedido especial</h2>
+      <p>Hola ${nombre}, gracias por contactarnos.</p>
+      <p>Ya recibimos tu solicitud de pedido especial y te responderemos pronto.</p>
+      <p><strong>Resumen:</strong></p>
+      <ul>
+        <li>CP: ${cp}</li>
+        <li>Kilos solicitados: ${kilos}</li>
+        <li>Fecha deseada: ${fechaDeseada || "No especificada"}</li>
+      </ul>
+      <p>Este correo es informativo, por favor no responder.</p>
+    `;
+
+    try {
+      await resend.emails.send({
+        from: noReplyEmail,
+        to: [email],
+        subject: "Recibimos tu pedido especial - Barbacoa Herencia",
+        html: confirmationHtml,
+      });
+    } catch (confirmationError) {
+      console.error("No se pudo enviar correo de confirmacion al cliente:", confirmationError);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
