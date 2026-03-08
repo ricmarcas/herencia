@@ -9,7 +9,7 @@ import {
   validatePromo,
   validateZone,
 } from "@/services/api";
-import type { CheckoutStep, PedidoPayload, SauceKey, Totales } from "@/types/pedido";
+import type { CheckoutStep, PedidoPayload, PromoRule, SauceKey, Totales } from "@/types/pedido";
 import type { CheckoutState } from "@/types/pedido";
 import type { PreciosCatalogo, Producto } from "@/types/producto";
 
@@ -96,12 +96,8 @@ type CheckoutAction =
   | {
       type: "SET_PROMO";
       payload: {
-        promoId: string;
-        nombre: string;
-        descripcion: string;
-        tipo: "NONE" | "PERCENT";
-        valor: number;
-        telefono: string;
+        phone: string;
+        promociones: PromoRule[];
       } | null;
     };
 
@@ -290,17 +286,9 @@ function checkoutReducer(state: CheckoutState, action: CheckoutAction): Checkout
     case "SET_PROMO":
       return {
         ...state,
-        promo: action.payload
-          ? { ...action.payload, descuento: state.promo?.descuento ?? 0 }
-          : null,
-        pedido: {
-          ...state.pedido,
-          promoId: action.payload?.promoId ?? "",
-          promoTipo: action.payload?.tipo ?? "NONE",
-          promoValor: action.payload?.valor ?? 0,
-        },
+        promo: action.payload,
         envioDatos: action.payload
-          ? { ...state.envioDatos, telefono: action.payload.telefono }
+          ? { ...state.envioDatos, telefono: action.payload.phone }
           : state.envioDatos,
       };
 
@@ -347,17 +335,56 @@ function computeTotals(state: CheckoutState): Totales {
     state.pedido.chilePasado * state.precios.chilePasado;
 
   const subtotal = totalBarbacoa + totalSalsas;
-  const descuento =
-    state.pedido.promoTipo === "PERCENT" && state.pedido.promoValor > 0
-      ? Math.round((subtotal * state.pedido.promoValor) / 100)
-      : 0;
+  let descuento = 0;
+  let envioFinal = state.pedido.envio;
+  let percentUsed = false;
+  const appliedPromos: PromoRule[] = [];
+
+  const promoRules = [...(state.promo?.promociones ?? [])].sort((a, b) => a.prioridad - b.prioridad);
+  for (const promo of promoRules) {
+    if (promo.minTotalPedido > 0 && subtotal < promo.minTotalPedido) {
+      continue;
+    }
+
+    let applied = false;
+    if (promo.tipo === "FREE_SHIPPING") {
+      if (envioFinal > 0) {
+        envioFinal = 0;
+        applied = true;
+      }
+    } else if (promo.tipo === "PERCENT") {
+      if (!percentUsed) {
+        descuento += Math.round((subtotal * promo.valor) / 100);
+        percentUsed = true;
+        applied = true;
+      }
+    } else if (promo.tipo === "FIXED") {
+      descuento += Math.round(promo.valor);
+      applied = true;
+    }
+
+    if (!applied) {
+      continue;
+    }
+
+    appliedPromos.push(promo);
+    if (!promo.combinable) {
+      break;
+    }
+  }
+
+  if (descuento > subtotal) {
+    descuento = subtotal;
+  }
 
   return {
     totalBarbacoa,
     totalSalsas,
     subtotal,
     descuento,
-    total: subtotal - descuento + state.pedido.envio,
+    envioFinal,
+    appliedPromos,
+    total: subtotal - descuento + envioFinal,
   };
 }
 
@@ -442,16 +469,22 @@ export function useCheckout() {
         return false;
       }
 
-      if (!response.promo) {
+      if (!response.promociones.length) {
         dispatch({ type: "SET_PROMO", payload: null });
         dispatch({ type: "SET_PROMO_MESSAGE", payload: response.message ?? "No hay promociones vigentes para este telefono." });
         return true;
       }
 
-      dispatch({ type: "SET_PROMO", payload: response.promo });
+      dispatch({
+        type: "SET_PROMO",
+        payload: {
+          phone: response.telefono,
+          promociones: response.promociones,
+        },
+      });
       dispatch({
         type: "SET_PROMO_MESSAGE",
-        payload: `${response.promo.nombre}: ${response.promo.descripcion}`,
+        payload: response.promociones.map((promo) => promo.nombre).join(" + "),
       });
       return true;
     } catch {
@@ -487,6 +520,13 @@ export function useCheckout() {
     try {
       const payload: PedidoPayload = {
         ...state.pedido,
+        envio: totals.envioFinal,
+        promoId: totals.appliedPromos.map((promo) => promo.promoId).join(","),
+        promoTipo:
+          totals.appliedPromos.length > 1
+            ? "MULTI"
+            : (totals.appliedPromos[0]?.tipo ?? "NONE"),
+        promoValor: totals.appliedPromos[0]?.valor ?? 0,
         nombre: state.envioDatos.nombre.trim(),
         email: state.envioDatos.email.trim().toLowerCase(),
         telefono: state.envioDatos.telefono,

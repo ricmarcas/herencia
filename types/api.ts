@@ -29,13 +29,8 @@ export type ColoniasResponse = {
 
 export type PromoResponse = {
   success: boolean;
-  promo: {
-    promoId: string;
-    nombre: string;
-    descripcion: string;
-    tipo: "NONE" | "PERCENT";
-    valor: number;
-    telefono: string;
-  } | null;
+  promociones: PromoRule[];
+  telefono: string;
   message?: string;
 };
+import type { PromoRule } from "./pedido";

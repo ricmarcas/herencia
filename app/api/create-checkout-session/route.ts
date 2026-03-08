@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     const PRECIO_CHILE = 80;
 
     const descuentoAplicado =
-      promoTipo === "PERCENT" && Number(promoValor) > 0
+      promoTipo !== "NONE" && Number(promoValor) >= 0
         ? Math.max(0, Math.round(Number(descuento)))
         : 0;
 

@@ -151,7 +151,7 @@ function ConfirmationStep({
           ) : null}
           <div className="flex justify-between">
             <span>Envio</span>
-            <span>${pedido.envio}</span>
+            <span>${totals.envioFinal}</span>
           </div>
           <div className="mt-2 flex justify-between font-semibold">
             <span>Total</span>
@@ -451,7 +451,7 @@ export default function PedidoPage() {
           <PaymentStep total={totals.total} isPaying={state.isPaying} onBack={actions.backStep} onPay={goToPayment} />
         ) : null}
 
-        {state.step > 1 ? <OrderSummary envio={state.pedido.envio} totals={totals} /> : null}
+        {state.step > 1 ? <OrderSummary envio={totals.envioFinal} totals={totals} /> : null}
       </div>
     </main>
   );

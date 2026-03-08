@@ -3,6 +3,19 @@ import type { PreciosCatalogo } from "./producto";
 export type CheckoutStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export type SauceKey = "verde" | "roja" | "chilePasado";
+export type PromoType = "PERCENT" | "FREE_SHIPPING" | "FIXED";
+
+export type PromoRule = {
+  promoId: string;
+  nombre: string;
+  descripcion: string;
+  tipo: PromoType;
+  valor: number;
+  minCompras: number;
+  minTotalPedido: number;
+  combinable: boolean;
+  prioridad: number;
+};
 
 export type PedidoPayload = {
   cp: string;
@@ -22,7 +35,7 @@ export type PedidoPayload = {
   fecha: string;
   ventana: string;
   promoId: string;
-  promoTipo: "NONE" | "PERCENT";
+  promoTipo: "NONE" | PromoType | "MULTI";
   promoValor: number;
   descuento: number;
 };
@@ -53,13 +66,8 @@ export type CheckoutState = {
   promoMessage: string;
   isPromoLoading: boolean;
   promo: {
-    promoId: string;
-    nombre: string;
-    descripcion: string;
-    tipo: "NONE" | "PERCENT";
-    valor: number;
-    descuento: number;
-    telefono: string;
+    phone: string;
+    promociones: PromoRule[];
   } | null;
 };
 
@@ -68,5 +76,7 @@ export type Totales = {
   totalSalsas: number;
   subtotal: number;
   descuento: number;
+  envioFinal: number;
+  appliedPromos: PromoRule[];
   total: number;
 };
