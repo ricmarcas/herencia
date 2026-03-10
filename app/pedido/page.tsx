@@ -357,6 +357,20 @@ export default function PedidoPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f5f1e8] px-4 py-12">
       <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl">
+        {state.step === 1 ? (
+          <div className="mb-6 overflow-hidden rounded-2xl border border-neutral-200">
+            <video
+              src="/videos/barbacoa.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              className="h-48 w-full object-cover"
+            />
+          </div>
+        ) : null}
+
         <CheckoutHeader step={state.step} />
 
         {state.error ? <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{state.error}</p> : null}
