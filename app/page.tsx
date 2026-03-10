@@ -1,20 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
+import HomeHeroVideo from "@/components/HomeHeroVideo";
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#f5f1e8] text-neutral-900">
       <section className="mx-auto max-w-6xl px-6 pt-6 md:pt-10">
         <div className="overflow-hidden rounded-3xl border border-neutral-200 bg-black shadow-xl">
-          <video
-            src="/videos/barbacoa.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            className="h-56 w-full object-cover md:h-80"
-          />
+          <HomeHeroVideo />
         </div>
       </section>
 
