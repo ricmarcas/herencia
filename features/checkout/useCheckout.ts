@@ -408,6 +408,11 @@ function computeTotals(state: CheckoutState): Totales {
   };
 }
 
+function hasAnySauceAvailable(state: CheckoutState): boolean {
+  const { verde, roja, chilePasado } = state.saucesStock;
+  return verde || roja || chilePasado;
+}
+
 export function useCheckout() {
   const [state, dispatch] = useReducer(checkoutReducer, initialState);
 
@@ -529,6 +534,20 @@ export function useCheckout() {
   };
 
   const nextStep = async (): Promise<boolean> => {
+    const hasSauces = hasAnySauceAvailable(state);
+
+    if (state.step === 2 && !hasSauces) {
+      const validationError = getValidationError(state);
+      if (validationError) {
+        dispatch({ type: "SET_ERROR", payload: validationError });
+        return false;
+      }
+
+      dispatch({ type: "SET_ERROR", payload: "" });
+      dispatch({ type: "SET_STEP", payload: 4 });
+      return true;
+    }
+
     if (state.step === 3) {
       try {
         const inventoryCheck = await validateInventory({
@@ -566,7 +585,14 @@ export function useCheckout() {
   };
 
   const backStep = () => {
+    const hasSauces = hasAnySauceAvailable(state);
+
     dispatch({ type: "SET_ERROR", payload: "" });
+    if (state.step === 4 && !hasSauces) {
+      dispatch({ type: "SET_STEP", payload: 2 });
+      return;
+    }
+
     dispatch({ type: "PREV_STEP" });
   };
 
