@@ -8,6 +8,10 @@ type SampleFormState = {
   email: string;
   telefono: string;
   cp: string;
+  colonia: string;
+  calle: string;
+  numeroExterior: string;
+  numeroInterior: string;
 };
 
 function isValidEmail(value: string): boolean {
@@ -20,6 +24,10 @@ export default function MuestrasPage() {
     email: "",
     telefono: "",
     cp: "",
+    colonia: "",
+    calle: "",
+    numeroExterior: "",
+    numeroInterior: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -57,6 +65,11 @@ export default function MuestrasPage() {
       return;
     }
 
+    if (!form.colonia.trim() || !form.calle.trim() || !form.numeroExterior.trim()) {
+      setError("Completa colonia, calle y numero exterior.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -65,6 +78,10 @@ export default function MuestrasPage() {
         email: form.email.trim().toLowerCase(),
         telefono: form.telefono.replace(/\D/g, "").slice(0, 10),
         cp: form.cp.replace(/\D/g, "").slice(0, 5),
+        colonia: form.colonia.trim(),
+        calle: form.calle.trim(),
+        numeroExterior: form.numeroExterior.trim(),
+        numeroInterior: form.numeroInterior.trim(),
         fuente: "landing-muestras",
       });
 
@@ -142,6 +159,32 @@ export default function MuestrasPage() {
             inputMode="numeric"
             className="w-full rounded-xl border px-4 py-3"
           />
+          <input
+            value={form.colonia}
+            onChange={(e) => update("colonia", e.target.value)}
+            placeholder="Colonia"
+            className="w-full rounded-xl border px-4 py-3"
+          />
+          <input
+            value={form.calle}
+            onChange={(e) => update("calle", e.target.value)}
+            placeholder="Calle"
+            className="w-full rounded-xl border px-4 py-3"
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              value={form.numeroExterior}
+              onChange={(e) => update("numeroExterior", e.target.value)}
+              placeholder="Numero exterior"
+              className="w-full rounded-xl border px-4 py-3"
+            />
+            <input
+              value={form.numeroInterior}
+              onChange={(e) => update("numeroInterior", e.target.value)}
+              placeholder="Numero interior (opcional)"
+              className="w-full rounded-xl border px-4 py-3"
+            />
+          </div>
         </div>
 
         {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}

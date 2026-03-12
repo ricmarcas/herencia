@@ -4,8 +4,8 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { appendRow, getSheetData } from "@/lib/sheets";
 
-const REGISTROS_RANGE = "MuestrasRegistros!A2:G5000";
-const INTENTOS_RANGE = "MuestrasIntentos!A2:I5000";
+const REGISTROS_RANGE = "MuestrasRegistros!A2:K5000";
+const INTENTOS_RANGE = "MuestrasIntentos!A2:L5000";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resendFromEmail = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
@@ -17,6 +17,10 @@ type SamplePayload = {
   email: string;
   telefono: string;
   cp: string;
+  colonia: string;
+  calle: string;
+  numeroExterior: string;
+  numeroInterior: string;
   fuente?: string;
 };
 
@@ -50,6 +54,10 @@ async function logAttempt(input: {
   nombre: string;
   telefono: string;
   cp: string;
+  colonia: string;
+  calle: string;
+  numeroExterior: string;
+  numeroInterior: string;
   resultado: "REGISTERED" | "DUPLICATE" | "ERROR";
   motivo: string;
   ip: string;
@@ -61,6 +69,10 @@ async function logAttempt(input: {
     input.nombre,
     input.telefono,
     input.cp,
+    input.colonia,
+    input.calle,
+    input.numeroExterior,
+    input.numeroInterior,
     input.resultado,
     input.motivo,
     input.ip,
@@ -68,9 +80,40 @@ async function logAttempt(input: {
   ]);
 }
 
+async function safeLogAttempt(input: {
+  email: string;
+  nombre: string;
+  telefono: string;
+  cp: string;
+  colonia: string;
+  calle: string;
+  numeroExterior: string;
+  numeroInterior: string;
+  resultado: "REGISTERED" | "DUPLICATE" | "ERROR";
+  motivo: string;
+  ip: string;
+  userAgent: string;
+}) {
+  try {
+    await logAttempt(input);
+  } catch (logError) {
+    console.error("No se pudo registrar intento de muestra:", logError);
+  }
+}
+
 function parseBody(raw: unknown): SamplePayload {
   if (!raw || typeof raw !== "object") {
-    return { nombre: "", email: "", telefono: "", cp: "", fuente: "" };
+    return {
+      nombre: "",
+      email: "",
+      telefono: "",
+      cp: "",
+      colonia: "",
+      calle: "",
+      numeroExterior: "",
+      numeroInterior: "",
+      fuente: "",
+    };
   }
 
   const body = raw as Record<string, unknown>;
@@ -79,6 +122,10 @@ function parseBody(raw: unknown): SamplePayload {
     email: String(body.email ?? "").trim().toLowerCase(),
     telefono: normalizePhone(String(body.telefono ?? "")),
     cp: normalizeCp(String(body.cp ?? "")),
+    colonia: String(body.colonia ?? "").trim(),
+    calle: String(body.calle ?? "").trim(),
+    numeroExterior: String(body.numeroExterior ?? "").trim(),
+    numeroInterior: String(body.numeroInterior ?? "").trim(),
     fuente: String(body.fuente ?? "landing-muestras").trim(),
   };
 }
@@ -90,12 +137,24 @@ export async function POST(req: Request) {
   try {
     const payload = parseBody(await req.json());
 
-    if (!payload.nombre || !isValidEmail(payload.email) || payload.telefono.length !== 10 || payload.cp.length !== 5) {
-      await logAttempt({
+    if (
+      !payload.nombre ||
+      !isValidEmail(payload.email) ||
+      payload.telefono.length !== 10 ||
+      payload.cp.length !== 5 ||
+      !payload.colonia ||
+      !payload.calle ||
+      !payload.numeroExterior
+    ) {
+      await safeLogAttempt({
         email: payload.email,
         nombre: payload.nombre,
         telefono: payload.telefono,
         cp: payload.cp,
+        colonia: payload.colonia,
+        calle: payload.calle,
+        numeroExterior: payload.numeroExterior,
+        numeroInterior: payload.numeroInterior,
         resultado: "ERROR",
         motivo: "INVALID_DATA",
         ip,
@@ -106,7 +165,7 @@ export async function POST(req: Request) {
         {
           success: false,
           alreadyRegistered: false,
-          message: "Datos incompletos o invalidos.",
+          message: "Completa nombre, email, telefono, CP, colonia, calle y numero exterior.",
         },
         { status: 400 }
       );
@@ -116,11 +175,15 @@ export async function POST(req: Request) {
     const alreadyRegistered = rows.some((row) => String(row[1] ?? "").trim().toLowerCase() === payload.email);
 
     if (alreadyRegistered) {
-      await logAttempt({
+      await safeLogAttempt({
         email: payload.email,
         nombre: payload.nombre,
         telefono: payload.telefono,
         cp: payload.cp,
+        colonia: payload.colonia,
+        calle: payload.calle,
+        numeroExterior: payload.numeroExterior,
+        numeroInterior: payload.numeroInterior,
         resultado: "DUPLICATE",
         motivo: "EMAIL_ALREADY_REGISTERED",
         ip,
@@ -140,15 +203,23 @@ export async function POST(req: Request) {
       payload.nombre,
       payload.telefono,
       payload.cp,
+      payload.colonia,
+      payload.calle,
+      payload.numeroExterior,
+      payload.numeroInterior,
       payload.fuente || "landing-muestras",
       "REGISTRADO",
     ]);
 
-    await logAttempt({
+    await safeLogAttempt({
       email: payload.email,
       nombre: payload.nombre,
       telefono: payload.telefono,
       cp: payload.cp,
+      colonia: payload.colonia,
+      calle: payload.calle,
+      numeroExterior: payload.numeroExterior,
+      numeroInterior: payload.numeroInterior,
       resultado: "REGISTERED",
       motivo: "NEW_SAMPLE_REQUEST",
       ip,
@@ -164,6 +235,10 @@ export async function POST(req: Request) {
         <p><strong>Email:</strong> ${payload.email}</p>
         <p><strong>Telefono:</strong> ${payload.telefono}</p>
         <p><strong>CP:</strong> ${payload.cp}</p>
+        <p><strong>Colonia:</strong> ${payload.colonia}</p>
+        <p><strong>Calle:</strong> ${payload.calle}</p>
+        <p><strong>Numero exterior:</strong> ${payload.numeroExterior}</p>
+        <p><strong>Numero interior:</strong> ${payload.numeroInterior || "N/A"}</p>
         <p><strong>Fuente:</strong> ${payload.fuente || "landing-muestras"}</p>
       `;
 
@@ -192,7 +267,7 @@ export async function POST(req: Request) {
       {
         success: false,
         alreadyRegistered: false,
-        message: "No fue posible registrar tu solicitud en este momento.",
+        message: error instanceof Error ? error.message : "No fue posible registrar tu solicitud en este momento.",
       },
       { status: 500 }
     );

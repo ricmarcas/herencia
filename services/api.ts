@@ -89,6 +89,10 @@ export async function requestSample(payload: {
   email: string;
   telefono: string;
   cp: string;
+  colonia: string;
+  calle: string;
+  numeroExterior: string;
+  numeroInterior: string;
   fuente?: string;
 }): Promise<SampleRequestResponse> {
   const response = await fetch("/api/muestras", {
@@ -97,5 +101,14 @@ export async function requestSample(payload: {
     body: JSON.stringify(payload),
   });
 
-  return parseJson<SampleRequestResponse>(response);
+  const raw = (await response.json()) as SampleRequestResponse;
+  if (!response.ok) {
+    return {
+      success: false,
+      alreadyRegistered: false,
+      message: raw.message || "Error de red en API",
+    };
+  }
+
+  return raw;
 }
