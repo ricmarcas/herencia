@@ -46,3 +46,9 @@ export type PromoResponse = {
   telefono: string;
   message?: string;
 };
+
+export type SampleRequestResponse = {
+  success: boolean;
+  alreadyRegistered: boolean;
+  message: string;
+};

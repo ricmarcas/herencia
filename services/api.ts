@@ -3,6 +3,7 @@ import type {
   ColoniasResponse,
   MaxInventoryResponse,
   PromoResponse,
+  SampleRequestResponse,
   SauceStockResponse,
   ProductosResponse,
   ValidateInventoryResponse,
@@ -81,4 +82,20 @@ export async function validateInventory(payload: {
   });
 
   return parseJson<ValidateInventoryResponse>(response);
+}
+
+export async function requestSample(payload: {
+  nombre: string;
+  email: string;
+  telefono: string;
+  cp: string;
+  fuente?: string;
+}): Promise<SampleRequestResponse> {
+  const response = await fetch("/api/muestras", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  return parseJson<SampleRequestResponse>(response);
 }
