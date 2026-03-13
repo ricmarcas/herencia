@@ -4,8 +4,8 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { appendRow, getSheetData } from "@/lib/sheets";
 
-const REGISTROS_RANGE = "MuestrasRegistros!A2:K5000";
-const INTENTOS_RANGE = "MuestrasIntentos!A2:M5000";
+const REGISTROS_RANGE = "MuestrasRegistros!A2:S5000";
+const INTENTOS_RANGE = "MuestrasIntentos!A2:V5000";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resendFromEmail = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
@@ -21,7 +21,39 @@ type SamplePayload = {
   calle: string;
   numeroExterior: string;
   numeroInterior: string;
-  fuente?: string;
+  fuente: string;
+  utmSource: string;
+  utmMedium: string;
+  utmCampaign: string;
+  utmContent: string;
+  utmTerm: string;
+  gclid: string;
+  landingPath: string;
+  referrer: string;
+};
+
+type AttemptLogInput = {
+  email: string;
+  nombre: string;
+  telefono: string;
+  cp: string;
+  colonia: string;
+  calle: string;
+  numeroExterior: string;
+  numeroInterior: string;
+  fuente: string;
+  utmSource: string;
+  utmMedium: string;
+  utmCampaign: string;
+  utmContent: string;
+  utmTerm: string;
+  gclid: string;
+  landingPath: string;
+  referrer: string;
+  resultado: "REGISTERED" | "DUPLICATE" | "ERROR";
+  motivo: string;
+  ip: string;
+  userAgent: string;
 };
 
 function isValidEmail(value: string): boolean {
@@ -53,20 +85,7 @@ function getClientIp(req: Request): string {
   return forwardedFor.split(",")[0]?.trim() ?? "unknown";
 }
 
-async function logAttempt(input: {
-  email: string;
-  nombre: string;
-  telefono: string;
-  cp: string;
-  colonia: string;
-  calle: string;
-  numeroExterior: string;
-  numeroInterior: string;
-  resultado: "REGISTERED" | "DUPLICATE" | "ERROR";
-  motivo: string;
-  ip: string;
-  userAgent: string;
-}) {
+async function logAttempt(input: AttemptLogInput) {
   await appendRow(INTENTOS_RANGE, [
     getNowIso(),
     input.email,
@@ -77,6 +96,15 @@ async function logAttempt(input: {
     input.calle,
     input.numeroExterior,
     input.numeroInterior,
+    input.fuente,
+    input.utmSource,
+    input.utmMedium,
+    input.utmCampaign,
+    input.utmContent,
+    input.utmTerm,
+    input.gclid,
+    input.landingPath,
+    input.referrer,
     input.resultado,
     input.motivo,
     input.ip,
@@ -84,20 +112,7 @@ async function logAttempt(input: {
   ]);
 }
 
-async function safeLogAttempt(input: {
-  email: string;
-  nombre: string;
-  telefono: string;
-  cp: string;
-  colonia: string;
-  calle: string;
-  numeroExterior: string;
-  numeroInterior: string;
-  resultado: "REGISTERED" | "DUPLICATE" | "ERROR";
-  motivo: string;
-  ip: string;
-  userAgent: string;
-}) {
+async function safeLogAttempt(input: AttemptLogInput) {
   try {
     await logAttempt(input);
   } catch (logError) {
@@ -116,7 +131,15 @@ function parseBody(raw: unknown): SamplePayload {
       calle: "",
       numeroExterior: "",
       numeroInterior: "",
-      fuente: "",
+      fuente: "landing-muestras",
+      utmSource: "",
+      utmMedium: "",
+      utmCampaign: "",
+      utmContent: "",
+      utmTerm: "",
+      gclid: "",
+      landingPath: "/muestras",
+      referrer: "",
     };
   }
 
@@ -130,7 +153,38 @@ function parseBody(raw: unknown): SamplePayload {
     calle: String(body.calle ?? "").trim(),
     numeroExterior: String(body.numeroExterior ?? "").trim(),
     numeroInterior: String(body.numeroInterior ?? "").trim(),
-    fuente: String(body.fuente ?? "landing-muestras").trim(),
+    fuente: String(body.fuente ?? "landing-muestras").trim() || "landing-muestras",
+    utmSource: String(body.utmSource ?? "").trim(),
+    utmMedium: String(body.utmMedium ?? "").trim(),
+    utmCampaign: String(body.utmCampaign ?? "").trim(),
+    utmContent: String(body.utmContent ?? "").trim(),
+    utmTerm: String(body.utmTerm ?? "").trim(),
+    gclid: String(body.gclid ?? "").trim(),
+    landingPath: String(body.landingPath ?? "/muestras").trim() || "/muestras",
+    referrer: String(body.referrer ?? "").trim(),
+  };
+}
+
+function toAttemptInput(payload: SamplePayload, extra: Pick<AttemptLogInput, "resultado" | "motivo" | "ip" | "userAgent">): AttemptLogInput {
+  return {
+    email: payload.email,
+    nombre: payload.nombre,
+    telefono: payload.telefono,
+    cp: payload.cp,
+    colonia: payload.colonia,
+    calle: payload.calle,
+    numeroExterior: payload.numeroExterior,
+    numeroInterior: payload.numeroInterior,
+    fuente: payload.fuente,
+    utmSource: payload.utmSource,
+    utmMedium: payload.utmMedium,
+    utmCampaign: payload.utmCampaign,
+    utmContent: payload.utmContent,
+    utmTerm: payload.utmTerm,
+    gclid: payload.gclid,
+    landingPath: payload.landingPath,
+    referrer: payload.referrer,
+    ...extra,
   };
 }
 
@@ -150,20 +204,14 @@ export async function POST(req: Request) {
       !payload.calle ||
       !payload.numeroExterior
     ) {
-      await safeLogAttempt({
-        email: payload.email,
-        nombre: payload.nombre,
-        telefono: payload.telefono,
-        cp: payload.cp,
-        colonia: payload.colonia,
-        calle: payload.calle,
-        numeroExterior: payload.numeroExterior,
-        numeroInterior: payload.numeroInterior,
-        resultado: "ERROR",
-        motivo: "INVALID_DATA",
-        ip,
-        userAgent,
-      });
+      await safeLogAttempt(
+        toAttemptInput(payload, {
+          resultado: "ERROR",
+          motivo: "INVALID_DATA",
+          ip,
+          userAgent,
+        })
+      );
 
       return NextResponse.json(
         {
@@ -179,20 +227,14 @@ export async function POST(req: Request) {
     const alreadyRegistered = rows.some((row) => String(row[1] ?? "").trim().toLowerCase() === payload.email);
 
     if (alreadyRegistered) {
-      await safeLogAttempt({
-        email: payload.email,
-        nombre: payload.nombre,
-        telefono: payload.telefono,
-        cp: payload.cp,
-        colonia: payload.colonia,
-        calle: payload.calle,
-        numeroExterior: payload.numeroExterior,
-        numeroInterior: payload.numeroInterior,
-        resultado: "DUPLICATE",
-        motivo: "EMAIL_ALREADY_REGISTERED",
-        ip,
-        userAgent,
-      });
+      await safeLogAttempt(
+        toAttemptInput(payload, {
+          resultado: "DUPLICATE",
+          motivo: "EMAIL_ALREADY_REGISTERED",
+          ip,
+          userAgent,
+        })
+      );
 
       return NextResponse.json({
         success: true,
@@ -211,24 +253,26 @@ export async function POST(req: Request) {
       payload.calle,
       payload.numeroExterior,
       payload.numeroInterior,
-      payload.fuente || "landing-muestras",
+      payload.fuente,
+      payload.utmSource,
+      payload.utmMedium,
+      payload.utmCampaign,
+      payload.utmContent,
+      payload.utmTerm,
+      payload.gclid,
+      payload.landingPath,
+      payload.referrer,
       "REGISTRADO",
     ]);
 
-    await safeLogAttempt({
-      email: payload.email,
-      nombre: payload.nombre,
-      telefono: payload.telefono,
-      cp: payload.cp,
-      colonia: payload.colonia,
-      calle: payload.calle,
-      numeroExterior: payload.numeroExterior,
-      numeroInterior: payload.numeroInterior,
-      resultado: "REGISTERED",
-      motivo: "NEW_SAMPLE_REQUEST",
-      ip,
-      userAgent,
-    });
+    await safeLogAttempt(
+      toAttemptInput(payload, {
+        resultado: "REGISTERED",
+        motivo: "NEW_SAMPLE_REQUEST",
+        ip,
+        userAgent,
+      })
+    );
 
     if (resend && notificationEmail) {
       const subject = `Nueva solicitud de muestra - ${payload.email}`;
@@ -243,7 +287,15 @@ export async function POST(req: Request) {
         <p><strong>Calle:</strong> ${payload.calle}</p>
         <p><strong>Numero exterior:</strong> ${payload.numeroExterior}</p>
         <p><strong>Numero interior:</strong> ${payload.numeroInterior || "N/A"}</p>
-        <p><strong>Fuente:</strong> ${payload.fuente || "landing-muestras"}</p>
+        <p><strong>Fuente:</strong> ${payload.fuente}</p>
+        <p><strong>UTM Source:</strong> ${payload.utmSource || "N/A"}</p>
+        <p><strong>UTM Medium:</strong> ${payload.utmMedium || "N/A"}</p>
+        <p><strong>UTM Campaign:</strong> ${payload.utmCampaign || "N/A"}</p>
+        <p><strong>UTM Content:</strong> ${payload.utmContent || "N/A"}</p>
+        <p><strong>UTM Term:</strong> ${payload.utmTerm || "N/A"}</p>
+        <p><strong>gclid:</strong> ${payload.gclid || "N/A"}</p>
+        <p><strong>Landing Path:</strong> ${payload.landingPath || "/muestras"}</p>
+        <p><strong>Referrer:</strong> ${payload.referrer || "N/A"}</p>
       `;
 
       try {

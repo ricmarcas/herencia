@@ -14,6 +14,17 @@ type SampleFormState = {
   numeroInterior: string;
 };
 
+type SampleTracking = {
+  utmSource: string;
+  utmMedium: string;
+  utmCampaign: string;
+  utmContent: string;
+  utmTerm: string;
+  gclid: string;
+  landingPath: string;
+  referrer: string;
+};
+
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
@@ -40,6 +51,33 @@ export default function MuestrasPage() {
     alreadyRegistered: boolean;
     message: string;
   } | null>(null);
+
+  const tracking = useMemo<SampleTracking>(() => {
+    if (typeof window === "undefined") {
+      return {
+        utmSource: "",
+        utmMedium: "",
+        utmCampaign: "",
+        utmContent: "",
+        utmTerm: "",
+        gclid: "",
+        landingPath: "/muestras",
+        referrer: "",
+      };
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    return {
+      utmSource: (params.get("utm_source") ?? "").trim(),
+      utmMedium: (params.get("utm_medium") ?? "").trim(),
+      utmCampaign: (params.get("utm_campaign") ?? "").trim(),
+      utmContent: (params.get("utm_content") ?? "").trim(),
+      utmTerm: (params.get("utm_term") ?? "").trim(),
+      gclid: (params.get("gclid") ?? "").trim(),
+      landingPath: window.location.pathname || "/muestras",
+      referrer: document.referrer || "",
+    };
+  }, []);
 
   const emailInvalid = useMemo(() => form.email.trim().length > 0 && !isValidEmail(form.email), [form.email]);
 
@@ -88,6 +126,14 @@ export default function MuestrasPage() {
         numeroExterior: form.numeroExterior.trim(),
         numeroInterior: form.numeroInterior.trim(),
         fuente: "landing-muestras",
+        utmSource: tracking.utmSource,
+        utmMedium: tracking.utmMedium,
+        utmCampaign: tracking.utmCampaign,
+        utmContent: tracking.utmContent,
+        utmTerm: tracking.utmTerm,
+        gclid: tracking.gclid,
+        landingPath: tracking.landingPath,
+        referrer: tracking.referrer,
       });
 
       if (!response.success) {

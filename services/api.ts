@@ -94,6 +94,14 @@ export async function requestSample(payload: {
   numeroExterior: string;
   numeroInterior: string;
   fuente?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+  utmTerm?: string;
+  gclid?: string;
+  landingPath?: string;
+  referrer?: string;
 }): Promise<SampleRequestResponse> {
   const response = await fetch("/api/muestras", {
     method: "POST",
