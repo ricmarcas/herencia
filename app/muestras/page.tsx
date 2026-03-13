@@ -18,6 +18,11 @@ function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
+function isValidMxPhone(value: string): boolean {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  return /^[2-9]\d{9}$/.test(digits);
+}
+
 export default function MuestrasPage() {
   const [form, setForm] = useState<SampleFormState>({
     nombre: "",
@@ -55,8 +60,8 @@ export default function MuestrasPage() {
       return;
     }
 
-    if (form.telefono.replace(/\D/g, "").length !== 10) {
-      setError("Ingresa un telefono de 10 digitos.");
+    if (!isValidMxPhone(form.telefono)) {
+      setError("Ingresa un telefono celular valido de 10 digitos.");
       return;
     }
 
@@ -116,6 +121,18 @@ export default function MuestrasPage() {
               Registro confirmado. Te notificaremos el envio de tu muestra.
             </p>
           )}
+          <button
+            type="button"
+            onClick={() => {
+              window.close();
+              setTimeout(() => {
+                window.location.href = "/";
+              }, 100);
+            }}
+            className="mt-6 w-full rounded-xl bg-[#7a5c3e] py-3 text-white"
+          >
+            Cerrar
+          </button>
         </div>
       </main>
     );

@@ -5,7 +5,7 @@ import { Resend } from "resend";
 import { appendRow, getSheetData } from "@/lib/sheets";
 
 const REGISTROS_RANGE = "MuestrasRegistros!A2:K5000";
-const INTENTOS_RANGE = "MuestrasIntentos!A2:L5000";
+const INTENTOS_RANGE = "MuestrasIntentos!A2:M5000";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resendFromEmail = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
@@ -30,6 +30,10 @@ function isValidEmail(value: string): boolean {
 
 function normalizePhone(value: string): string {
   return value.replace(/\D/g, "").slice(0, 10);
+}
+
+function isValidMxPhone(value: string): boolean {
+  return /^[2-9]\d{9}$/.test(value);
 }
 
 function normalizeCp(value: string): string {
@@ -140,7 +144,7 @@ export async function POST(req: Request) {
     if (
       !payload.nombre ||
       !isValidEmail(payload.email) ||
-      payload.telefono.length !== 10 ||
+      !isValidMxPhone(payload.telefono) ||
       payload.cp.length !== 5 ||
       !payload.colonia ||
       !payload.calle ||
@@ -165,7 +169,7 @@ export async function POST(req: Request) {
         {
           success: false,
           alreadyRegistered: false,
-          message: "Completa nombre, email, telefono, CP, colonia, calle y numero exterior.",
+          message: "Completa nombre, email, telefono celular valido, CP, colonia, calle y numero exterior.",
         },
         { status: 400 }
       );
