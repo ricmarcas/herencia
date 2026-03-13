@@ -4,8 +4,9 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { appendRow, getSheetData } from "@/lib/sheets";
 
-const REGISTROS_RANGE = "MuestrasRegistros!A2:S5000";
-const INTENTOS_RANGE = "MuestrasIntentos!A2:V5000";
+const REGISTROS_READ_RANGE = "MuestrasRegistros!A2:S5000";
+const REGISTROS_APPEND_RANGE = "MuestrasRegistros!A:S";
+const INTENTOS_APPEND_RANGE = "MuestrasIntentos!A:V";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resendFromEmail = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
@@ -86,7 +87,7 @@ function getClientIp(req: Request): string {
 }
 
 async function logAttempt(input: AttemptLogInput) {
-  await appendRow(INTENTOS_RANGE, [
+  await appendRow(INTENTOS_APPEND_RANGE, [
     getNowIso(),
     input.email,
     input.nombre,
@@ -223,7 +224,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const rows = await getSheetData(REGISTROS_RANGE);
+    const rows = await getSheetData(REGISTROS_READ_RANGE);
     const alreadyRegistered = rows.some((row) => String(row[1] ?? "").trim().toLowerCase() === payload.email);
 
     if (alreadyRegistered) {
@@ -243,7 +244,7 @@ export async function POST(req: Request) {
       });
     }
 
-    await appendRow(REGISTROS_RANGE, [
+    await appendRow(REGISTROS_APPEND_RANGE, [
       getNowIso(),
       payload.email,
       payload.nombre,
