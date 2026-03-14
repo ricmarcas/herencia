@@ -38,6 +38,15 @@ export type PedidoPayload = {
   promoTipo: "NONE" | PromoType | "MULTI";
   promoValor: number;
   descuento: number;
+  utmSource: string;
+  utmMedium: string;
+  utmCampaign: string;
+  utmContent: string;
+  utmTerm: string;
+  gclid: string;
+  landingPath: string;
+  referrer: string;
+  attributionModel: "last_touch";
 };
 
 export type DatosEnvio = {

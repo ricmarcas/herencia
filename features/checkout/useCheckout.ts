@@ -11,6 +11,7 @@ import {
   validatePromo,
   validateZone,
 } from "@/services/api";
+import { getCheckoutAttributionFromStorage } from "@/lib/attribution";
 import type { CheckoutStep, PedidoPayload, PromoRule, SauceKey, Totales } from "@/types/pedido";
 import type { CheckoutState } from "@/types/pedido";
 import type { PreciosCatalogo, Producto } from "@/types/producto";
@@ -40,6 +41,15 @@ const initialState: CheckoutState = {
     promoTipo: "NONE",
     promoValor: 0,
     descuento: 0,
+    utmSource: "",
+    utmMedium: "",
+    utmCampaign: "",
+    utmContent: "",
+    utmTerm: "",
+    gclid: "",
+    landingPath: "",
+    referrer: "",
+    attributionModel: "last_touch",
   },
   envioDatos: {
     nombre: "",
@@ -601,6 +611,7 @@ export function useCheckout() {
     dispatch({ type: "SET_ERROR", payload: "" });
 
     try {
+      const attribution = getCheckoutAttributionFromStorage();
       const payload: PedidoPayload = {
         ...state.pedido,
         envio: totals.envioFinal,
@@ -619,6 +630,15 @@ export function useCheckout() {
         numeroExterior: state.envioDatos.numeroExterior.trim(),
         numeroInterior: state.envioDatos.numeroInterior.trim(),
         descuento: totals.descuento,
+        utmSource: attribution.utmSource,
+        utmMedium: attribution.utmMedium,
+        utmCampaign: attribution.utmCampaign,
+        utmContent: attribution.utmContent,
+        utmTerm: attribution.utmTerm,
+        gclid: attribution.gclid,
+        landingPath: attribution.landingPath,
+        referrer: attribution.referrer,
+        attributionModel: attribution.attributionModel,
       };
 
       const response = await createCheckoutSession(payload);

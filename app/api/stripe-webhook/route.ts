@@ -264,12 +264,21 @@ async function appendPedidoByHeaders(payload: {
   ventana: string;
   clienteId: string;
   direccionId: string;
+  utmSource: string;
+  utmMedium: string;
+  utmCampaign: string;
+  utmContent: string;
+  utmTerm: string;
+  gclid: string;
+  landingPath: string;
+  referrer: string;
+  attributionModel: string;
 }) {
   const rows = await getSheetData("Pedidos!A1:AZ1");
   const headers = rows[0] ?? [];
 
   if (!headers.length) {
-    await appendRow("Pedidos!A2:N1000", [
+    await appendRow("Pedidos!A2:W5000", [
       payload.sessionId,
       payload.createdAt,
       payload.telefono,
@@ -284,6 +293,15 @@ async function appendPedidoByHeaders(payload: {
       payload.ventana,
       payload.clienteId,
       payload.direccionId,
+      payload.utmSource,
+      payload.utmMedium,
+      payload.utmCampaign,
+      payload.utmContent,
+      payload.utmTerm,
+      payload.gclid,
+      payload.landingPath,
+      payload.referrer,
+      payload.attributionModel,
     ]);
     return;
   }
@@ -311,6 +329,15 @@ async function appendPedidoByHeaders(payload: {
   assign(["Ventana"], payload.ventana);
   assign(["ClienteID", "IDCliente"], payload.clienteId);
   assign(["DireccionID", "IDDireccion"], payload.direccionId);
+  assign(["UTMSource", "utm_source"], payload.utmSource);
+  assign(["UTMMedium", "utm_medium"], payload.utmMedium);
+  assign(["UTMCampaign", "utm_campaign"], payload.utmCampaign);
+  assign(["UTMContent", "utm_content"], payload.utmContent);
+  assign(["UTMTerm", "utm_term"], payload.utmTerm);
+  assign(["GCLID", "gclid"], payload.gclid);
+  assign(["LandingPath", "landing_path"], payload.landingPath);
+  assign(["Referrer", "referer"], payload.referrer);
+  assign(["AttributionModel", "attribution_model"], payload.attributionModel);
 
   await appendRow(`Pedidos!A2:${columnToLetter(headers.length)}5000`, row);
 }
@@ -419,6 +446,15 @@ export async function POST(req: Request) {
       const numeroInterior = String(metadata.numeroInterior ?? "").trim();
       const fechaEntrega = String(metadata.fecha ?? "").trim();
       const ventana = String(metadata.ventana ?? "SIN_VENTANA").trim();
+      const utmSource = String(metadata.utmSource ?? "").trim();
+      const utmMedium = String(metadata.utmMedium ?? "").trim();
+      const utmCampaign = String(metadata.utmCampaign ?? "").trim();
+      const utmContent = String(metadata.utmContent ?? "").trim();
+      const utmTerm = String(metadata.utmTerm ?? "").trim();
+      const gclid = String(metadata.gclid ?? "").trim();
+      const landingPath = String(metadata.landingPath ?? "").trim();
+      const referrer = String(metadata.referrer ?? "").trim();
+      const attributionModel = String(metadata.attributionModel ?? "last_touch").trim();
 
       const clienteId = await upsertCliente({
         telefono,
@@ -453,6 +489,15 @@ export async function POST(req: Request) {
         ventana,
         clienteId,
         direccionId,
+        utmSource,
+        utmMedium,
+        utmCampaign,
+        utmContent,
+        utmTerm,
+        gclid,
+        landingPath,
+        referrer,
+        attributionModel,
       });
 
       try {
