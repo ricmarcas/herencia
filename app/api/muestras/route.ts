@@ -263,7 +263,7 @@ export async function POST(req: Request) {
       payload.gclid,
       payload.landingPath,
       payload.referrer,
-      "REGISTRADO",
+      "solicitud",
     ]);
 
     await safeLogAttempt(
