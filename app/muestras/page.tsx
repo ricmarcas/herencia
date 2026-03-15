@@ -156,11 +156,11 @@ export default function MuestrasPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#f5f1e8] px-4 py-12">
         <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-xl">
-          <h1 className="mb-3 text-2xl font-semibold">Gracias por tu interes</h1>
+          <h1 className="mb-3 text-2xl font-semibold">Gracias</h1>
           <p className="mb-4 text-neutral-700">{done.message}</p>
           {done.alreadyRegistered ? (
             <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
-              Enviaremos una muestra por persona registrada.
+              Lo sentimos, ya contamos con un registro de solicitud y solo enviamos una muestra por persona registrada.
             </p>
           ) : (
             <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">

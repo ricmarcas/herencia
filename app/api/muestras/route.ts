@@ -10,6 +10,7 @@ const INTENTOS_APPEND_RANGE = "MuestrasIntentos!A:V";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resendFromEmail = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
+const resendNoReplyEmail = process.env.RESEND_NO_REPLY_EMAIL ?? resendFromEmail;
 const notificationEmail = process.env.SAMPLE_ORDERS_TO_EMAIL ?? process.env.SPECIAL_ORDERS_TO_EMAIL;
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
@@ -240,7 +241,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         alreadyRegistered: true,
-        message: "Gracias. Ya tenemos tu registro y enviaremos una muestra por persona.",
+        message: "Ya tenemos tu registro y enviaremos una muestra por persona.",
       });
     }
 
@@ -309,6 +310,34 @@ export async function POST(req: Request) {
         });
       } catch (emailError) {
         console.error("Error enviando notificacion de muestra:", emailError);
+      }
+    }
+
+    if (resend) {
+      const customerSubject = "Recibimos tu solicitud de muestra - Barbacoa Herencia";
+      const customerHtml = `
+        <h2>Gracias por solicitar una muestra</h2>
+        <p>Hola ${payload.nombre}, recibimos tu registro correctamente.</p>
+        <p>En breve te contactaremos para confirmar la entrega de tu muestra.</p>
+        <hr />
+        <p><strong>Resumen de tu registro:</strong></p>
+        <ul>
+          <li>Email: ${payload.email}</li>
+          <li>Telefono: ${payload.telefono}</li>
+          <li>Direccion: ${payload.calle} ${payload.numeroExterior}${payload.numeroInterior ? ` Int ${payload.numeroInterior}` : ""}, Col. ${payload.colonia}, CP ${payload.cp}</li>
+        </ul>
+        <p>Este correo es informativo, por favor no responder.</p>
+      `;
+
+      try {
+        await resend.emails.send({
+          from: resendNoReplyEmail,
+          to: [payload.email],
+          subject: customerSubject,
+          html: customerHtml,
+        });
+      } catch (customerEmailError) {
+        console.error("Error enviando confirmacion de muestra al cliente:", customerEmailError);
       }
     }
 
