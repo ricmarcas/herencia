@@ -49,53 +49,9 @@ function toDatetimeLocalValue(value: string): string {
 }
 
 function printRow(row: AdminSampleRow) {
-  const win = window.open("", "_blank", "noopener,noreferrer,width=700,height=900");
-  if (!win) return;
-
-  const interior = row.numeroInterior ? ` Int ${row.numeroInterior}` : "";
-  const html = `
-    <html>
-      <head>
-        <title>Muestra - ${row.nombre}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 24px; color: #111; }
-          h1 { margin: 0 0 12px; }
-          p { margin: 6px 0; font-size: 16px; }
-          .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
-        </style>
-      </head>
-      <body>
-        <h1>Entrega de muestra</h1>
-        <div class="card">
-          <p><strong>Nombre:</strong> ${row.nombre}</p>
-          <p><strong>Direccion:</strong> ${row.calle} ${row.numeroExterior}${interior}, Col. ${row.colonia}, CP ${row.cp}</p>
-          <p><strong>Telefono:</strong> ${row.telefono}</p>
-          <p><strong>Email:</strong> ${row.email}</p>
-          <p><strong>Fecha solicitud:</strong> ${formatDate(row.fechaRegistro)}</p>
-        </div>
-      </body>
-    </html>
-  `;
-
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-
-  const triggerPrint = () => {
-    try {
-      win.focus();
-      win.print();
-    } catch {
-      // Ignore print errors; user can print manually from the opened window.
-    }
-  };
-
-  // Prefer printing after full load; keep a timeout fallback for browsers that
-  // do not reliably fire onload on document.write windows.
-  win.onload = () => {
-    window.setTimeout(triggerPrint, 150);
-  };
-  window.setTimeout(triggerPrint, 700);
+  const key = `muestras_print_${row.rowNumber}_${Date.now()}`;
+  window.sessionStorage.setItem(key, JSON.stringify(row));
+  window.open(`/admin/muestras/print?key=${encodeURIComponent(key)}`, "_blank", "noopener,noreferrer,width=700,height=900");
 }
 
 export default function AdminMuestrasPage() {
