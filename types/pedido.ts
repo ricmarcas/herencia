@@ -7,6 +7,7 @@ export type PromoType = "PERCENT" | "FREE_SHIPPING" | "FIXED";
 
 export type PromoRule = {
   promoId: string;
+  titulo: string;
   nombre: string;
   descripcion: string;
   tipo: PromoType;

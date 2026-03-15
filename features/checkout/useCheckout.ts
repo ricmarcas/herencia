@@ -637,6 +637,7 @@ export function useCheckout() {
 
       const promoNps: PromoRule = {
         promoId: "NPS20",
+        titulo: "Descuento NPS 20%",
         nombre: "Descuento NPS 20%",
         descripcion: "Promocion por evaluacion de muestra",
         tipo: "PERCENT",

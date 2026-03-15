@@ -35,7 +35,8 @@ function toPromoRule(code: string): PromoRule | null {
   if (code === "FF") {
     return {
       promoId: "FF",
-      nombre: "Friend & Family",
+      titulo: "Friends&Family",
+      nombre: "Friends&Family",
       descripcion: "15% permanente en pedidos",
       tipo: "PERCENT",
       valor: 15,
@@ -49,7 +50,8 @@ function toPromoRule(code: string): PromoRule | null {
   if (code === "NPSM+") {
     return {
       promoId: "NPSM+",
-      nombre: "NPS Muestras",
+      titulo: "Nos gusta que te guste",
+      nombre: "Nos gusta que te guste",
       descripcion: "20% por evaluacion de muestra",
       tipo: "PERCENT",
       valor: 20,
@@ -63,7 +65,8 @@ function toPromoRule(code: string): PromoRule | null {
   if (code === "5K") {
     return {
       promoId: "5K",
-      nombre: "Meta 5K",
+      titulo: "Compras acumuladas",
+      nombre: "Compras acumuladas",
       descripcion: "15% por recompra despues de 5kg acumulados",
       tipo: "PERCENT",
       valor: 15,
@@ -169,7 +172,7 @@ export async function getEligiblePromotionsByPhone(telefonoRaw: string): Promise
     telefono,
     promociones: normalizedPromos,
     message: normalizedPromos.length
-      ? `Promocion vigente detectada: ${normalizedPromos[0].nombre}.`
+      ? `Cupon ${normalizedPromos[0].titulo} ${normalizedPromos[0].valor}% aplicado.`
       : "No hay promocion vigente para este celular.",
   };
 }
