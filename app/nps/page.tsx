@@ -125,7 +125,7 @@ export default function NpsPage() {
           <p className="text-sm text-neutral-700">Tu comentario fue registrado correctamente.</p>
           {offerToken ? (
             <div className="mt-6 rounded-xl border border-emerald-300 bg-emerald-50 p-4">
-              <p className="text-sm font-medium text-emerald-900">Por tu evaluacion, tienes 20% de descuento en tu primera compra.</p>
+              <p className="text-sm font-medium text-emerald-900">Por tu evaluacion, tienes 15% de descuento en tu primera compra.</p>
               <p className="mt-1 text-xs text-emerald-800">Vigencia de 7 dias. Uso unico.</p>
               <a
                 href={checkoutOfferUrl}
@@ -143,13 +143,13 @@ export default function NpsPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f5f1e8] px-4 py-12">
       <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-xl">
-        <h1 className="mb-2 text-2xl font-semibold">Gracias por evaluar tu experiencia</h1>
-        <p className="mb-2 text-sm text-neutral-700">Calificacion registrada: <strong>{score}</strong> / 10</p>
+        <h1 className="mb-2 text-2xl font-semibold">Gracias por evaluarnos</h1>
+        <p className="mb-2 text-sm text-neutral-700">Evaluación registrada: <strong>{score}</strong> / 10</p>
         <p className="mb-6 text-sm text-neutral-600">Si deseas, deja un comentario adicional (opcional).</p>
 
         {offerToken ? (
           <div className="mb-6 rounded-xl border border-emerald-300 bg-emerald-50 p-4">
-            <p className="text-sm font-medium text-emerald-900">Gracias por tu evaluacion. Tienes 20% de descuento en tu primera compra.</p>
+            <p className="text-sm font-medium text-emerald-900">Muchas Gracias! Nos gusta que te guste!. Tienes 15% de descuento en tu primera compra.</p>
             <p className="mt-1 text-xs text-emerald-800">
               Vigencia: {offerExpiresAt ? new Date(offerExpiresAt).toLocaleDateString("es-MX") : "7 dias"}.
             </p>
@@ -157,7 +157,7 @@ export default function NpsPage() {
               href={checkoutOfferUrl}
               className="mt-3 inline-block rounded-xl bg-emerald-700 px-4 py-2 text-sm text-white"
             >
-              Comprar ahora y aprovechar promocion
+              COMPRA AHORA, aprovecha tu promocion
             </a>
           </div>
         ) : null}

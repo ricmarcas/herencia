@@ -154,7 +154,7 @@ export async function POST(req: Request) {
       success: true,
       offerToken,
       offerExpiresAt,
-      offerDiscountPercent: offerToken ? 20 : 0,
+      offerDiscountPercent: offerToken ? 15 : 0,
     });
   } catch (error: unknown) {
     return NextResponse.json(

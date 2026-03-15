@@ -636,12 +636,12 @@ export function useCheckout() {
       }
 
       const promoNps: PromoRule = {
-        promoId: "NPS20",
-        titulo: "Descuento NPS 20%",
-        nombre: "Descuento NPS 20%",
+        promoId: "NPS15",
+        titulo: "Descuento NPS 15%",
+        nombre: "Descuento NPS 15%",
         descripcion: "Promocion por evaluacion de muestra",
         tipo: "PERCENT",
-        valor: 20,
+        valor: 15,
         minCompras: 0,
         minTotalPedido: 0,
         combinable: false,
@@ -651,7 +651,7 @@ export function useCheckout() {
       dispatch({ type: "SET_EXTRA_PROMOS", payload: [promoNps] });
       dispatch({
         type: "SET_NPS_OFFER_MESSAGE",
-        payload: response.message ?? "Promocion NPS activa: 20% en tu primera compra.",
+        payload: response.message ?? "Promocion NPS activa: 15% en tu primera compra.",
       });
 
       if (response.profile) {

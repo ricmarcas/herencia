@@ -94,10 +94,10 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       eligible,
-      discountPercent: eligible ? 20 : 0,
+      discountPercent: eligible ? 15 : 0,
       expiresAt: new Date(verified.exp).toISOString(),
       message: eligible
-        ? "Promocion NPS activa: 20% en tu primera compra."
+        ? "Promocion NPS activa: 15% en tu primera compra."
         : "La promocion no esta disponible para esta cuenta.",
       profile: {
         nombre: String(idxNombre >= 0 ? row[idxNombre] ?? "" : ""),
