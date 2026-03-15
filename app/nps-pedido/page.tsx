@@ -148,7 +148,7 @@ export default function NpsPedidoPage() {
           className="mb-4 w-full rounded-xl border px-4 py-3"
         >
           <option value="">Selecciona una calificacion (0 a 10)</option>
-          {Array.from({ length: 11 }, (_, score) => (
+          {Array.from({ length: 11 }, (_, i) => 10 - i).map((score) => (
             <option key={`entrega-${score}`} value={score}>
               {score}
             </option>
@@ -165,7 +165,7 @@ export default function NpsPedidoPage() {
           className="mb-4 w-full rounded-xl border px-4 py-3"
         >
           <option value="">Selecciona una calificacion (0 a 10)</option>
-          {Array.from({ length: 11 }, (_, score) => (
+          {Array.from({ length: 11 }, (_, i) => 10 - i).map((score) => (
             <option key={`sabor-${score}`} value={score}>
               {score}
             </option>
