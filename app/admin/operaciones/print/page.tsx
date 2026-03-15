@@ -125,7 +125,7 @@ export default function AdminOperacionesPrintPage() {
           <img
             src="/images/logoHerencia.png"
             alt="Herencia"
-            className="absolute right-[0.1in] top-[0.1in] h-[10mm] w-[10mm] object-contain"
+            className="absolute right-[0.1in] top-[0.1in] w-[15mm] h-auto object-contain"
           />
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide">Barbacoa Estilo Parral</p>
