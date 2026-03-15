@@ -99,9 +99,9 @@ function buildNpsEmailHtml(baseUrl: string, email: string, nombre: string): stri
   }).join("");
 
   return `
-    <h2>¿Que tan probable es que recomiendes Barbacoa estilo Parral?</h2>
+    <h2>¿Recomendarías la Barbacoa estilo Parral?</h2>
     <p>Hola ${nombre || "cliente"}, tu opinion nos ayuda a mejorar.</p>
-    <p>Califica tu experiencia de 0 a 10, donde 0 es lo peor y 10 lo mejor:</p>
+    <p>¿Qué tan probable es que recomiendes nuestra Barbacoa? donde 0 es "olvidalo no la recomendaría" y 10 es "Me encató! y la recomentaría 100%"</p>
     <div>${buttons}</div>
     <p style="margin-top:16px">Gracias por tu tiempo.</p>
   `;
@@ -173,7 +173,7 @@ async function runNpsFollowup(req: Request) {
         await resend.emails.send({
           from: resendNoReplyEmail,
           to: [email],
-          subject: "¿Cómo fue tu experiencia con tu muestra?",
+          subject: "¿Te gustó la Barbacoa Estilo Parral? evalúa",
           html: buildNpsEmailHtml(baseUrl, email, nombre),
         });
 
