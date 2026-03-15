@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { google } from "googleapis";
+import { Resend } from "resend";
 import { getSheetData } from "@/lib/sheets";
 
 const SHEET_RANGE = "MuestrasRegistros!A1:AZ5000";
@@ -13,6 +14,10 @@ const auth = new google.auth.JWT({
 });
 
 const sheets = google.sheets({ version: "v4", auth });
+const resendApiKey = process.env.RESEND_API_KEY;
+const resendFromEmail = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
+const resendNoReplyEmail = process.env.RESEND_NO_REPLY_EMAIL ?? resendFromEmail;
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 type SampleAdminRow = {
   rowNumber: number;
@@ -136,6 +141,22 @@ async function updateRow(sheetRowNumber: number, values: Array<string | number |
   });
 }
 
+function formatDateEsMx(value: Date): string {
+  return value.toLocaleDateString("es-MX", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function formatTimeEsMx(value: Date): string {
+  return value.toLocaleTimeString("es-MX", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export async function GET(req: Request) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
@@ -205,6 +226,9 @@ export async function POST(req: Request) {
     const idxEstatus = findHeaderIndex(headers, ["Estatus", "Estado"]);
     const idxFechaProgramada = findHeaderIndex(headers, ["FechaProgramada"]);
     const idxFechaEntrega = findHeaderIndex(headers, ["FechaEntrega"]);
+    const idxUltimoEmail = findHeaderIndex(headers, ["UltimoEmail"]);
+    const idxEmail = findHeaderIndex(headers, ["Email"]);
+    const idxNombre = findHeaderIndex(headers, ["Nombre"]);
 
     if (idxEstatus < 0) {
       return NextResponse.json({ success: false, message: "Columna Estatus no encontrada" }, { status: 400 });
@@ -226,8 +250,47 @@ export async function POST(req: Request) {
 
       rowValues[idxFechaProgramada] = parsed.toISOString();
       rowValues[idxEstatus] = "programada";
+
+      let emailSent = false;
+      const email = String(idxEmail >= 0 ? rowValues[idxEmail] ?? "" : "").trim().toLowerCase();
+      const nombre = String(idxNombre >= 0 ? rowValues[idxNombre] ?? "" : "").trim();
+
+      if (resend && email) {
+        const subject = "Tu muestra de Barbacoa Herencia ya fue programada";
+        const fechaTexto = formatDateEsMx(parsed);
+        const horaTexto = formatTimeEsMx(parsed);
+        const html = `
+          <h2>Entrega de muestra programada</h2>
+          <p>Hola ${nombre || "cliente"},</p>
+          <p>Tu entrega de muestra ya fue programada.</p>
+          <p><strong>Dia:</strong> ${fechaTexto}</p>
+          <p><strong>Horario aproximado:</strong> ${horaTexto}</p>
+          <p>Gracias por tu interes en Barbacoa Herencia.</p>
+          <p>Este correo es informativo, por favor no responder.</p>
+        `;
+
+        try {
+          await resend.emails.send({
+            from: resendNoReplyEmail,
+            to: [email],
+            subject,
+            html,
+          });
+          emailSent = true;
+        } catch (emailError) {
+          console.error("No se pudo enviar correo de programacion de muestra:", emailError);
+        }
+      }
+
+      if (emailSent && idxUltimoEmail >= 0) {
+        rowValues[idxUltimoEmail] = new Date().toISOString();
+      }
+
       await updateRow(rowNumber, rowValues);
-      return NextResponse.json({ success: true });
+      return NextResponse.json({
+        success: true,
+        message: emailSent ? "Entrega programada y correo enviado." : "Entrega programada. No se pudo enviar correo.",
+      });
     }
 
     if (action === "entregar") {

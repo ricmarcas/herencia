@@ -318,7 +318,7 @@ export async function POST(req: Request) {
       const customerHtml = `
         <h2>Gracias por solicitar una muestra</h2>
         <p>Hola ${payload.nombre}, recibimos tu registro correctamente.</p>
-        <p>En breve te contactaremos para confirmar la entrega de tu muestra.</p>
+        <p>En breve te contactaremos para confirmar la fecha de entrega de tu muestra.</p>
         <hr />
         <p><strong>Resumen de tu registro:</strong></p>
         <ul>
@@ -344,7 +344,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       alreadyRegistered: false,
-      message: "Gracias por registrarte. Te contactaremos para el envio de tu muestra.",
+      message: "Ya tenemos tu solicitud de muestra. Te contactaremos para confirmar fecha del envio.",
     });
   } catch (error: unknown) {
     console.error("Error procesando solicitud de muestra:", error);
