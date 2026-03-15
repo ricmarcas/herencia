@@ -71,6 +71,12 @@ function isAuthorizedCron(req: Request): boolean {
   return isVercelCron;
 }
 
+function isAuthorizedAdmin(req: Request): boolean {
+  const expectedPassword = process.env.ADMIN_MUESTRAS_PASSWORD ?? process.env.ADMIN_PASSWORD ?? "";
+  const providedPassword = req.headers.get("x-admin-password") ?? "";
+  return Boolean(expectedPassword) && providedPassword === expectedPassword;
+}
+
 function parseDate(value: string): Date | null {
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
@@ -101,11 +107,7 @@ function buildNpsEmailHtml(baseUrl: string, email: string, nombre: string): stri
   `;
 }
 
-export async function GET(req: Request) {
-  if (!isAuthorizedCron(req)) {
-    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
-  }
-
+async function runNpsFollowup() {
   if (!resend) {
     return NextResponse.json({ success: false, message: "RESEND_API_KEY no configurada" }, { status: 500 });
   }
@@ -184,4 +186,20 @@ export async function GET(req: Request) {
       { status: 500 }
     );
   }
+}
+
+export async function GET(req: Request) {
+  if (!isAuthorizedCron(req)) {
+    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+  }
+
+  return runNpsFollowup();
+}
+
+export async function POST(req: Request) {
+  if (!isAuthorizedAdmin(req)) {
+    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+  }
+
+  return runNpsFollowup();
 }

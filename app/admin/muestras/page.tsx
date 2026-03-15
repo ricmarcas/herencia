@@ -63,6 +63,7 @@ export default function AdminMuestrasPage() {
   const [programadas, setProgramadas] = useState<AdminSampleRow[]>([]);
   const [draftProgramacion, setDraftProgramacion] = useState<Record<number, string>>({});
   const [activeView, setActiveView] = useState<"solicitud" | "programada">("solicitud");
+  const [crmMessage, setCrmMessage] = useState("");
 
   const isAuthed = useMemo(() => password.length > 0, [password]);
 
@@ -201,6 +202,32 @@ export default function AdminMuestrasPage() {
     }
   };
 
+  const sendNpsPending = async () => {
+    setLoading(true);
+    setError("");
+    setCrmMessage("");
+    try {
+      const response = await fetch("/api/cron/nps", {
+        method: "POST",
+        headers: {
+          "x-admin-password": password,
+        },
+      });
+
+      const data = (await response.json()) as { success: boolean; sent?: number; skipped?: number; message?: string };
+      if (!data.success) {
+        throw new Error(data.message ?? "No se pudo ejecutar el envio de NPS.");
+      }
+
+      setCrmMessage(`NPS ejecutado. Enviados: ${data.sent ?? 0}. Omitidos: ${data.skipped ?? 0}.`);
+      await reload();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "No se pudo ejecutar el envio de NPS.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isAuthed) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#f5f1e8] px-4 py-12">
@@ -235,6 +262,13 @@ export default function AdminMuestrasPage() {
           <div className="flex gap-2">
             <button
               type="button"
+              onClick={() => void sendNpsPending()}
+              className="rounded-xl bg-neutral-900 px-4 py-2 text-sm text-white"
+            >
+              Enviar NPS pendientes
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveView("solicitud")}
               className={`rounded-xl px-4 py-2 text-sm ${activeView === "solicitud" ? "bg-[#7a5c3e] text-white" : "bg-neutral-100"}`}
             >
@@ -258,6 +292,7 @@ export default function AdminMuestrasPage() {
         </div>
 
         {error ? <p className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+        {crmMessage ? <p className="mb-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">{crmMessage}</p> : null}
         {loading ? <p className="mb-4 text-sm text-neutral-600">Actualizando...</p> : null}
 
         {activeView === "solicitud" ? (
