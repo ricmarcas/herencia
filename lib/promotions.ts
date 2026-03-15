@@ -19,37 +19,95 @@ function normalizePhone(value: string): string {
   return value.replace(/\D/g, "").slice(0, 10);
 }
 
-function parseBoolean(value: string): boolean {
-  const normalized = normalizeHeader(value);
-  return ["true", "1", "si", "yes", "activo", "activa"].includes(normalized);
+function parseDate(value: string): Date | null {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function parseNumber(value: string | undefined, fallback = 0): number {
-  const parsed = Number(value ?? fallback);
-  return Number.isFinite(parsed) ? parsed : fallback;
+function normalizePromoCode(value: string): string {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
 }
 
-function todayIso(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
+function toPromoRule(code: string): PromoRule | null {
+  if (code === "FF") {
+    return {
+      promoId: "FF",
+      nombre: "Friend & Family",
+      descripcion: "15% permanente en pedidos",
+      tipo: "PERCENT",
+      valor: 15,
+      minCompras: 0,
+      minTotalPedido: 0,
+      combinable: false,
+      prioridad: 1,
+    };
+  }
 
-function isDateInRange(value: string, start: string, end: string): boolean {
-  if (!start && !end) return true;
-  if (start && value < start) return false;
-  if (end && value > end) return false;
-  return true;
-}
+  if (code === "NPSM+") {
+    return {
+      promoId: "NPSM+",
+      nombre: "NPS Muestras",
+      descripcion: "20% por evaluacion de muestra",
+      tipo: "PERCENT",
+      valor: 20,
+      minCompras: 0,
+      minTotalPedido: 0,
+      combinable: false,
+      prioridad: 2,
+    };
+  }
 
-function parsePromoType(value: string): PromoRule["tipo"] | null {
-  const normalized = normalizeHeader(value);
-  if (normalized === "percent") return "PERCENT";
-  if (normalized === "freeshipping" || normalized === "enviogratis") return "FREE_SHIPPING";
-  if (normalized === "fixed" || normalized === "monto") return "FIXED";
+  if (code === "5K") {
+    return {
+      promoId: "5K",
+      nombre: "Meta 5K",
+      descripcion: "15% por recompra despues de 5kg acumulados",
+      tipo: "PERCENT",
+      valor: 15,
+      minCompras: 0,
+      minTotalPedido: 0,
+      combinable: false,
+      prioridad: 3,
+    };
+  }
+
   return null;
+}
+
+function promoIsVigente(code: string, vigenciaRaw: string): boolean {
+  if (code === "FF") {
+    return true;
+  }
+
+  const vigencia = parseDate(String(vigenciaRaw ?? "").trim());
+  if (!vigencia) {
+    return false;
+  }
+  return vigencia.getTime() >= Date.now();
+}
+
+function extractPromoFromRecord(headers: string[], row: string[]): PromoRule | null {
+  const idxPromo = findHeaderIndex(headers, ["Promo", "Promocion", "Promoción"]);
+  if (idxPromo < 0) return null;
+
+  const idxPromoVigencia = findHeaderIndex(headers, ["PromoVigencia", "VigenciaPromo", "Vigencia"]);
+  const promoCode = normalizePromoCode(String(row[idxPromo] ?? ""));
+  if (!promoCode || promoCode === "0" || promoCode === "NONE") {
+    return null;
+  }
+
+  const rule = toPromoRule(promoCode);
+  if (!rule) return null;
+
+  const vigenciaRaw = idxPromoVigencia >= 0 ? String(row[idxPromoVigencia] ?? "") : "";
+  if (!promoIsVigente(promoCode, vigenciaRaw)) {
+    return null;
+  }
+
+  return rule;
 }
 
 export async function getEligiblePromotionsByPhone(telefonoRaw: string): Promise<{
@@ -63,145 +121,98 @@ export async function getEligiblePromotionsByPhone(telefonoRaw: string): Promise
     return { telefono, promociones: [], message: "Telefono invalido" };
   }
 
-  const [clientesRows, promocionesRows] = await Promise.all([
+  const [clientesRows, muestrasRows] = await Promise.all([
     getSheetData("Clientes!A1:Z5000"),
-    getSheetData("Promociones!A1:Z5000"),
+    getSheetData("MuestrasRegistros!A1:AZ5000"),
   ]);
 
-  if (!clientesRows.length || !promocionesRows.length) {
+  if (!clientesRows.length && !muestrasRows.length) {
     return { telefono, promociones: [], message: "No hay promociones disponibles" };
   }
 
-  const clientesHeaders = clientesRows[0] ?? [];
-  const clientesData = clientesRows.slice(1);
+  const promociones: PromoRule[] = [];
 
-  const idxTelefonoCliente = findHeaderIndex(clientesHeaders, ["Telefono", "Teléfono"]);
-  const idxComprasCliente = findHeaderIndex(clientesHeaders, ["Compras"]);
-
-  if (idxTelefonoCliente < 0 || idxComprasCliente < 0) {
-    return { telefono, promociones: [], message: "No se pudo validar historial del cliente" };
-  }
-
-  const cliente = clientesData.find((row) => normalizePhone(String(row[idxTelefonoCliente] ?? "")) === telefono);
-
-  if (!cliente) {
-    return { telefono, promociones: [], message: "No encontramos compras previas para este numero" };
-  }
-
-  const comprasCliente = parseNumber(String(cliente[idxComprasCliente] ?? "0"), 0);
-
-  const promoHeaders = promocionesRows[0] ?? [];
-  const promoData = promocionesRows.slice(1);
-
-  const idxPromoId = findHeaderIndex(promoHeaders, ["PromoID", "ID", "Clave"]);
-  const idxNombre = findHeaderIndex(promoHeaders, ["Nombre"]);
-  const idxTipo = findHeaderIndex(promoHeaders, ["Tipo"]);
-  const idxValor = findHeaderIndex(promoHeaders, ["Valor"]);
-  const idxActiva = findHeaderIndex(promoHeaders, ["Activa", "Activo"]);
-  const idxFechaInicio = findHeaderIndex(promoHeaders, ["FechaInicio", "Inicio"]);
-  const idxFechaFin = findHeaderIndex(promoHeaders, ["FechaFin", "Fin"]);
-  const idxMinCompras = findHeaderIndex(promoHeaders, ["MinCompras", "ComprasMinimas"]);
-  const idxMinTotal = findHeaderIndex(promoHeaders, ["MinTotal", "MinTotalPedido"]);
-  const idxCombinable = findHeaderIndex(promoHeaders, ["Combinable"]);
-  const idxPrioridad = findHeaderIndex(promoHeaders, ["Prioridad"]);
-  const idxMensaje = findHeaderIndex(promoHeaders, ["Mensaje", "Descripcion", "Descripción"]);
-
-  if (idxPromoId < 0 || idxTipo < 0 || idxValor < 0 || idxActiva < 0) {
-    return { telefono, promociones: [], message: "Faltan columnas requeridas en hoja Promociones" };
-  }
-
-  const today = todayIso();
-
-  const promociones: PromoRule[] = promoData
-    .map((row) => {
-      const activa = parseBoolean(String(row[idxActiva] ?? "FALSE"));
-      if (!activa) return null;
-
-      const tipo = parsePromoType(String(row[idxTipo] ?? ""));
-      if (!tipo) return null;
-
-      const promoId = String(row[idxPromoId] ?? "").trim();
-      if (!promoId) return null;
-
-      const fechaInicio = idxFechaInicio >= 0 ? String(row[idxFechaInicio] ?? "").trim() : "";
-      const fechaFin = idxFechaFin >= 0 ? String(row[idxFechaFin] ?? "").trim() : "";
-
-      if (!isDateInRange(today, fechaInicio, fechaFin)) {
-        return null;
+  if (clientesRows.length) {
+    const clientesHeaders = clientesRows[0] ?? [];
+    const clientesData = clientesRows.slice(1);
+    const idxTelefonoCliente = findHeaderIndex(clientesHeaders, ["Telefono", "Teléfono"]);
+    if (idxTelefonoCliente >= 0) {
+      const clienteRow = [...clientesData]
+        .reverse()
+        .find((row) => normalizePhone(String(row[idxTelefonoCliente] ?? "")) === telefono);
+      if (clienteRow) {
+        const promo = extractPromoFromRecord(clientesHeaders, clienteRow);
+        if (promo) promociones.push(promo);
       }
+    }
+  }
 
-      const minCompras = idxMinCompras >= 0 ? parseNumber(String(row[idxMinCompras] ?? "0"), 0) : 0;
-      if (comprasCliente < minCompras) return null;
+  if (muestrasRows.length) {
+    const muestrasHeaders = muestrasRows[0] ?? [];
+    const muestrasData = muestrasRows.slice(1);
+    const idxTelefonoMuestra = findHeaderIndex(muestrasHeaders, ["Telefono", "Teléfono"]);
+    if (idxTelefonoMuestra >= 0) {
+      const muestraRow = [...muestrasData]
+        .reverse()
+        .find((row) => normalizePhone(String(row[idxTelefonoMuestra] ?? "")) === telefono);
+      if (muestraRow) {
+        const promo = extractPromoFromRecord(muestrasHeaders, muestraRow);
+        if (promo) promociones.push(promo);
+      }
+    }
+  }
 
-      const valor = parseNumber(String(row[idxValor] ?? "0"), 0);
-      if (valor <= 0) return null;
-
-      const minTotalPedido = idxMinTotal >= 0 ? parseNumber(String(row[idxMinTotal] ?? "0"), 0) : 0;
-      const combinable = idxCombinable >= 0 ? parseBoolean(String(row[idxCombinable] ?? "TRUE")) : true;
-      const prioridad = idxPrioridad >= 0 ? parseNumber(String(row[idxPrioridad] ?? "100"), 100) : 100;
-
-      return {
-        promoId,
-        nombre: idxNombre >= 0 ? String(row[idxNombre] ?? promoId) : promoId,
-        descripcion: idxMensaje >= 0 ? String(row[idxMensaje] ?? "") : "",
-        tipo,
-        valor,
-        minCompras,
-        minTotalPedido,
-        combinable,
-        prioridad,
-      } satisfies PromoRule;
-    })
-    .filter((promo): promo is PromoRule => promo !== null)
-    .sort((a, b) => a.prioridad - b.prioridad);
+  const ff = promociones.find((promo) => promo.promoId === "FF");
+  const normalizedPromos = ff ? [ff] : [...promociones].sort((a, b) => a.prioridad - b.prioridad);
 
   return {
     telefono,
-    promociones,
-    message: promociones.length ? `Encontramos ${promociones.length} promocion(es) vigentes para tu cuenta.` : "Cliente sin promocion vigente",
+    promociones: normalizedPromos,
+    message: normalizedPromos.length
+      ? `Promocion vigente detectada: ${normalizedPromos[0].nombre}.`
+      : "No hay promocion vigente para este celular.",
   };
 }
 
 export function applyPromotionsToOrder(subtotal: number, envioBase: number, promociones: PromoRule[]) {
-  let descuento = 0;
-  let envioFinal = envioBase;
-  let percentUsed = false;
-  const appliedPromos: PromoRule[] = [];
+  let bestPromo: PromoRule | null = null;
+  let bestDiscount = 0;
+  let bestShipping = envioBase;
 
-  for (const promo of [...promociones].sort((a, b) => a.prioridad - b.prioridad)) {
-    if (promo.minTotalPedido > 0 && subtotal < promo.minTotalPedido) {
-      continue;
-    }
+  for (const promo of promociones) {
+    if (promo.minTotalPedido > 0 && subtotal < promo.minTotalPedido) continue;
 
-    let applied = false;
+    let descuento = 0;
+    let envioFinal = envioBase;
     if (promo.tipo === "FREE_SHIPPING") {
-      if (envioFinal > 0) {
-        envioFinal = 0;
-        applied = true;
-      }
+      envioFinal = 0;
     } else if (promo.tipo === "PERCENT") {
-      if (!percentUsed) {
-        descuento += Math.round((subtotal * promo.valor) / 100);
-        percentUsed = true;
-        applied = true;
-      }
+      descuento = Math.round((subtotal * promo.valor) / 100);
     } else if (promo.tipo === "FIXED") {
-      descuento += Math.round(promo.valor);
-      applied = true;
+      descuento = Math.round(promo.valor);
     }
 
-    if (!applied) continue;
+    if (descuento > subtotal) descuento = subtotal;
+    const ahorroTotal = descuento + Math.max(0, envioBase - envioFinal);
+    const bestAhorro = bestDiscount + Math.max(0, envioBase - bestShipping);
+    if (!bestPromo || ahorroTotal > bestAhorro || (ahorroTotal === bestAhorro && promo.prioridad < bestPromo.prioridad)) {
+      bestPromo = promo;
+      bestDiscount = descuento;
+      bestShipping = envioFinal;
+    }
 
-    appliedPromos.push(promo);
-    if (!promo.combinable) break;
+    if (promo.promoId === "FF") {
+      bestPromo = promo;
+      bestDiscount = descuento;
+      bestShipping = envioFinal;
+      break;
+    }
   }
 
-  if (descuento > subtotal) descuento = subtotal;
-
   return {
-    descuento,
-    envioFinal,
-    appliedPromos,
-    total: subtotal - descuento + envioFinal,
+    descuento: bestDiscount,
+    envioFinal: bestShipping,
+    appliedPromos: bestPromo ? [bestPromo] : [],
+    total: subtotal - bestDiscount + bestShipping,
   };
 }

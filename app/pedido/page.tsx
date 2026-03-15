@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckoutHeader } from "@/components/CheckoutHeader";
 import { DeliveryDate } from "@/components/DeliveryDate";
@@ -67,8 +67,8 @@ function PromoLookup({
 }) {
   return (
     <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
-      <p className="mb-2 text-sm font-medium text-amber-900">Tienes promociones por recompra?</p>
-      <p className="mb-3 text-xs text-amber-900">Valida tu celular para aplicar descuento antes de continuar.</p>
+      <p className="mb-2 text-sm font-medium text-amber-900">Tienes una promocion activa?</p>
+      <p className="mb-3 text-xs text-amber-900">Valida tu celular para aplicar tu mejor promocion disponible.</p>
 
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <input
@@ -347,14 +347,6 @@ export default function PedidoPage() {
   const router = useRouter();
   const { state, totals, dateRange, coloniasDisponibles, actions } = useCheckout();
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = String(params.get("nps_offer") ?? "").trim();
-    if (token) {
-      void actions.loadNpsOffer(token);
-    }
-  }, []);
-
   const goToPayment = async () => {
     const url = await actions.startPayment();
     if (url) {
@@ -391,8 +383,8 @@ export default function PedidoPage() {
               maxKilos={state.maxKilos}
               envio={state.pedido.envio}
               totals={totals}
-              promoMessage={state.npsOfferMessage || state.promoMessage}
-              isPromoLoading={state.isNpsOfferLoading || state.isPromoLoading}
+              promoMessage={state.promoMessage}
+              isPromoLoading={state.isPromoLoading}
               onSelectKilos={actions.setKilos}
               onBack={actions.backStep}
               onNext={actions.nextStep}
@@ -462,7 +454,7 @@ export default function PedidoPage() {
           <PaymentStep total={totals.total} isPaying={state.isPaying} onBack={actions.backStep} onPay={goToPayment} />
         ) : null}
 
-        {state.step > 1 && state.step !== 5 ? <OrderSummary envio={totals.envioFinal} totals={totals} /> : null}
+        {state.step > 2 && state.step !== 5 ? <OrderSummary envio={totals.envioFinal} totals={totals} /> : null}
       </div>
     </main>
   );

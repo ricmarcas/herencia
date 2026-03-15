@@ -95,6 +95,9 @@ export async function POST(req: Request) {
     const idxNps = findHeaderIndex(headers, ["NPS"]);
     const idxComentario = findHeaderIndex(headers, ["Comentario"]);
     const idxEstatus = findHeaderIndex(headers, ["Estatus", "Estado"]);
+    const idxPromo = findHeaderIndex(headers, ["Promo", "Promocion", "Promoción"]);
+    const idxPromoAsignada = findHeaderIndex(headers, ["PromoAsignada", "FechaPromoAsignada"]);
+    const idxPromoVigencia = findHeaderIndex(headers, ["PromoVigencia", "Vigencia", "VigenciaPromo"]);
 
     if (idxEmail < 0) {
       return NextResponse.json({ success: false, message: "Columna Email no encontrada" }, { status: 500 });
@@ -124,6 +127,15 @@ export async function POST(req: Request) {
       if (score >= 8) {
         if (idxEstatus >= 0) {
           mutableRow[idxEstatus] = "cupon";
+        }
+        if (idxPromo >= 0) {
+          mutableRow[idxPromo] = "NPSM+";
+        }
+        if (idxPromoAsignada >= 0) {
+          mutableRow[idxPromoAsignada] = new Date().toISOString();
+        }
+        if (idxPromoVigencia >= 0) {
+          mutableRow[idxPromoVigencia] = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
         }
         offerToken = createNpsOfferToken(email, 7);
         offerExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();

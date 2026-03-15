@@ -5,7 +5,6 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getSheetData } from "@/lib/sheets";
 import { applyPromotionsToOrder, getEligiblePromotionsByPhone } from "@/lib/promotions";
-import { verifyNpsOfferToken } from "@/lib/nps-offer";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 
@@ -22,64 +21,6 @@ function readConfig(rows: string[][]): Record<string, string> {
     }
     return acc;
   }, {});
-}
-
-function normalizeHeader(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-}
-
-function findHeaderIndex(headers: string[], candidates: string[]): number {
-  const normalizedHeaders = headers.map((header) => normalizeHeader(header));
-  const normalizedCandidates = candidates.map((candidate) => normalizeHeader(candidate));
-  return normalizedHeaders.findIndex((header) => normalizedCandidates.includes(header));
-}
-
-async function isFirstPurchaseByEmail(emailRaw: string): Promise<boolean> {
-  const email = String(emailRaw).trim().toLowerCase();
-  if (!email) return false;
-
-  const rows = await getSheetData("Clientes!A1:Z5000");
-  const headers = rows[0] ?? [];
-  const data = rows.slice(1);
-  const idxEmail = findHeaderIndex(headers, ["Email", "Correo", "CorreoElectronico"]);
-  const idxCompras = findHeaderIndex(headers, ["Compras"]);
-
-  if (idxEmail < 0 || idxCompras < 0) {
-    return true;
-  }
-
-  const row = data.find((item) => String(item[idxEmail] ?? "").trim().toLowerCase() === email);
-  if (!row) return true;
-
-  const compras = Number(row[idxCompras] ?? 0);
-  return !Number.isFinite(compras) || compras <= 0;
-}
-
-async function isEligibleNpsCoupon(emailRaw: string): Promise<boolean> {
-  const email = String(emailRaw).trim().toLowerCase();
-  if (!email) return false;
-
-  const rows = await getSheetData("MuestrasRegistros!A1:AZ5000");
-  const headers = rows[0] ?? [];
-  const data = rows.slice(1);
-
-  const idxEmail = findHeaderIndex(headers, ["Email"]);
-  const idxNps = findHeaderIndex(headers, ["NPS"]);
-  const idxEstatus = findHeaderIndex(headers, ["Estatus", "Estado"]);
-
-  if (idxEmail < 0 || idxNps < 0 || idxEstatus < 0) return false;
-
-  const row = data.find((item) => String(item[idxEmail] ?? "").trim().toLowerCase() === email);
-  if (!row) return false;
-
-  const nps = Number(row[idxNps] ?? 0);
-  const estatus = String(row[idxEstatus] ?? "").trim().toLowerCase();
-
-  return nps >= 8 && estatus === "cupon";
 }
 
 async function getShippingByCp(cpRaw: string): Promise<number | null> {
@@ -125,7 +66,6 @@ export async function POST(req: Request) {
       landingPath = "",
       referrer = "",
       attributionModel = "last_touch",
-      npsOfferToken = "",
       fecha,
       ventana,
     } = body;
@@ -175,25 +115,13 @@ export async function POST(req: Request) {
       Number(roja) * PRECIO_SALSA +
       Number(chilePasado) * PRECIO_CHILE;
 
-    const verifiedNpsOffer = verifyNpsOfferToken(String(npsOfferToken ?? ""));
-    const npsOfferEligible =
-      verifiedNpsOffer.valid &&
-      verifiedNpsOffer.email === String(email ?? "").trim().toLowerCase() &&
-      (await isFirstPurchaseByEmail(String(email))) &&
-      (await isEligibleNpsCoupon(String(email)));
-
     let descuentoAplicado = 0;
     let envioFinal = envioCalculado;
     let appliedPromoIds = "";
     let appliedPromoType: "NONE" | "MULTI" | "PERCENT" | "FREE_SHIPPING" | "FIXED" = "NONE";
     let appliedPromoValue = 0;
 
-    if (!isQaOrder && npsOfferEligible) {
-      descuentoAplicado = Math.round(subtotalProductos * 0.2);
-      appliedPromoIds = "NPS20";
-      appliedPromoType = "PERCENT";
-      appliedPromoValue = 20;
-    } else if (!isQaOrder) {
+    if (!isQaOrder) {
       const eligiblePromos = await getEligiblePromotionsByPhone(String(telefono));
       const promoResult = applyPromotionsToOrder(subtotalProductos, envioCalculado, eligiblePromos.promociones);
       descuentoAplicado = promoResult.descuento;
@@ -316,7 +244,7 @@ export async function POST(req: Request) {
         landingPath: String(landingPath),
         referrer: String(referrer).slice(0, 500),
         attributionModel: String(attributionModel),
-        npsOfferApplied: npsOfferEligible ? "TRUE" : "FALSE",
+        npsOfferApplied: "FALSE",
       },
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cancel`,

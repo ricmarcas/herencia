@@ -61,6 +61,17 @@ function toNumber(value: string | number | boolean | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function plusDaysIso(days: number): string {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function normalizePromoCode(value: string): string {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
+}
+
 async function updateRow(sheetName: string, rowNumber: number, rowValues: Array<string | number | boolean>) {
   const lastCol = columnToLetter(rowValues.length);
 
@@ -80,6 +91,11 @@ async function upsertCliente(data: {
   email: string;
   kilos: number;
   total: number;
+  promoSeed: {
+    code: string;
+    assignedAt: string;
+    vigencia: string;
+  } | null;
 }): Promise<string> {
   const rows = await getSheetData("Clientes!A1:Z5000");
   const headers = rows[0] ?? [];
@@ -97,6 +113,10 @@ async function upsertCliente(data: {
   const idxTotal = findHeaderIndex(headers, ["TotalGastado", "Total"]);
   const idxUltimoPedido = findHeaderIndex(headers, ["UltimoPedido", "FechaUltimoPedido"]);
   const idxFechaAlta = findHeaderIndex(headers, ["FechaAlta", "Alta"]);
+  const idxPromo = findHeaderIndex(headers, ["Promo", "Promocion", "Promoción"]);
+  const idxPromoAsignada = findHeaderIndex(headers, ["PromoAsignada", "FechaPromoAsignada"]);
+  const idxPromoVigencia = findHeaderIndex(headers, ["PromoVigencia", "Vigencia", "VigenciaPromo"]);
+  const idxPromoActualizada = findHeaderIndex(headers, ["PromoActualizada", "CuponActualizado", "PromoUltimaAplicacion"]);
 
   if (idxTelefono < 0) {
     return "";
@@ -119,14 +139,30 @@ async function upsertCliente(data: {
     const existingCompras = idxCompras >= 0 ? toNumber(mutableRow[idxCompras]) : 0;
     const existingKilos = idxKilos >= 0 ? toNumber(mutableRow[idxKilos]) : 0;
     const existingTotal = idxTotal >= 0 ? toNumber(mutableRow[idxTotal]) : 0;
+    const nextKilos = Number((existingKilos + data.kilos).toFixed(2));
+    const currentPromo = normalizePromoCode(idxPromo >= 0 ? String(mutableRow[idxPromo] ?? "") : "");
 
     if (idxTelefono >= 0) mutableRow[idxTelefono] = normalizedPhone;
     if (idxNombre >= 0) mutableRow[idxNombre] = data.nombre;
     if (idxEmail >= 0) mutableRow[idxEmail] = data.email;
     if (idxCompras >= 0) mutableRow[idxCompras] = existingCompras + 1;
-    if (idxKilos >= 0) mutableRow[idxKilos] = Number((existingKilos + data.kilos).toFixed(2));
+    if (idxKilos >= 0) mutableRow[idxKilos] = nextKilos;
     if (idxTotal >= 0) mutableRow[idxTotal] = Number((existingTotal + data.total).toFixed(2));
     if (idxUltimoPedido >= 0) mutableRow[idxUltimoPedido] = nowIso;
+
+    if (currentPromo !== "FF" && data.promoSeed && idxPromo >= 0) {
+      mutableRow[idxPromo] = data.promoSeed.code;
+      if (idxPromoAsignada >= 0) mutableRow[idxPromoAsignada] = data.promoSeed.assignedAt;
+      if (idxPromoVigencia >= 0) mutableRow[idxPromoVigencia] = data.promoSeed.vigencia;
+      if (idxPromoActualizada >= 0) mutableRow[idxPromoActualizada] = nowIso;
+    }
+
+    if (currentPromo !== "FF" && nextKilos >= 5 && idxPromo >= 0) {
+      mutableRow[idxPromo] = "5K";
+      if (idxPromoAsignada >= 0) mutableRow[idxPromoAsignada] = nowIso;
+      if (idxPromoVigencia >= 0) mutableRow[idxPromoVigencia] = plusDaysIso(30);
+      if (idxPromoActualizada >= 0) mutableRow[idxPromoActualizada] = nowIso;
+    }
 
     let clienteId = "";
     if (idxClienteId >= 0) {
@@ -153,9 +189,61 @@ async function upsertCliente(data: {
   if (idxTotal >= 0) newRow[idxTotal] = Number(data.total.toFixed(2));
   if (idxUltimoPedido >= 0) newRow[idxUltimoPedido] = nowIso;
   if (idxFechaAlta >= 0) newRow[idxFechaAlta] = nowIso;
+  if (idxPromo >= 0) newRow[idxPromo] = "0";
+
+  if (data.promoSeed && idxPromo >= 0) {
+    newRow[idxPromo] = data.promoSeed.code;
+    if (idxPromoAsignada >= 0) newRow[idxPromoAsignada] = data.promoSeed.assignedAt;
+    if (idxPromoVigencia >= 0) newRow[idxPromoVigencia] = data.promoSeed.vigencia;
+    if (idxPromoActualizada >= 0) newRow[idxPromoActualizada] = nowIso;
+  }
+
+  if (data.kilos >= 5 && idxPromo >= 0) {
+    newRow[idxPromo] = "5K";
+    if (idxPromoAsignada >= 0) newRow[idxPromoAsignada] = nowIso;
+    if (idxPromoVigencia >= 0) newRow[idxPromoVigencia] = plusDaysIso(30);
+    if (idxPromoActualizada >= 0) newRow[idxPromoActualizada] = nowIso;
+  }
 
   await appendRow(`Clientes!A2:${columnToLetter(headers.length)}5000`, newRow);
   return newClienteId;
+}
+
+async function getPromoSeedFromSample(emailRaw: string, telefonoRaw: string): Promise<{
+  code: string;
+  assignedAt: string;
+  vigencia: string;
+} | null> {
+  const email = String(emailRaw ?? "").trim().toLowerCase();
+  const telefono = normalizePhone(String(telefonoRaw ?? ""));
+  if (!email && !telefono) return null;
+
+  const rows = await getSheetData("MuestrasRegistros!A1:AZ5000");
+  const headers = rows[0] ?? [];
+  const data = rows.slice(1);
+  if (!headers.length) return null;
+
+  const idxEmail = findHeaderIndex(headers, ["Email"]);
+  const idxTelefono = findHeaderIndex(headers, ["Telefono", "Teléfono"]);
+  const idxPromo = findHeaderIndex(headers, ["Promo", "Promocion", "Promoción"]);
+  const idxPromoAsignada = findHeaderIndex(headers, ["PromoAsignada", "FechaPromoAsignada"]);
+  const idxPromoVigencia = findHeaderIndex(headers, ["PromoVigencia", "Vigencia", "VigenciaPromo"]);
+  if (idxPromo < 0) return null;
+
+  const row = [...data].reverse().find((item) => {
+    const rowEmail = String(idxEmail >= 0 ? item[idxEmail] ?? "" : "").trim().toLowerCase();
+    const rowTelefono = normalizePhone(String(idxTelefono >= 0 ? item[idxTelefono] ?? "" : ""));
+    return (email && rowEmail === email) || (telefono && rowTelefono === telefono);
+  });
+
+  if (!row) return null;
+
+  const code = normalizePromoCode(String(row[idxPromo] ?? ""));
+  if (!code || code === "0" || code === "NONE") return null;
+
+  const assignedAt = String(idxPromoAsignada >= 0 ? row[idxPromoAsignada] ?? "" : "").trim() || new Date().toISOString();
+  const vigencia = String(idxPromoVigencia >= 0 ? row[idxPromoVigencia] ?? "" : "").trim();
+  return { code, assignedAt, vigencia };
 }
 
 async function upsertDireccion(data: {
@@ -494,6 +582,7 @@ export async function POST(req: Request) {
       const landingPath = String(metadata.landingPath ?? "").trim();
       const referrer = String(metadata.referrer ?? "").trim();
       const attributionModel = String(metadata.attributionModel ?? "last_touch").trim();
+      const promoSeed = await getPromoSeedFromSample(email, telefono);
 
       const clienteId = await upsertCliente({
         telefono,
@@ -501,6 +590,7 @@ export async function POST(req: Request) {
         email,
         kilos,
         total,
+        promoSeed,
       });
 
       const direccionId = await upsertDireccion({

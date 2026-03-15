@@ -20,13 +20,7 @@ export default function NpsPage() {
   const [offerExpiresAt, setOfferExpiresAt] = useState("");
 
   const remainingChars = useMemo(() => 280 - comment.length, [comment.length]);
-  const checkoutOfferUrl = useMemo(
-    () =>
-      offerToken
-        ? `${CANONICAL_CHECKOUT_BASE_URL}/pedido?nps_offer=${encodeURIComponent(offerToken)}`
-        : "",
-    [offerToken]
-  );
+  const checkoutOfferUrl = `${CANONICAL_CHECKOUT_BASE_URL}/pedido`;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
