@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 
 type PrintableSampleRow = {
   rowNumber: number;
-  fechaRegistro: string;
   email: string;
   nombre: string;
   telefono: string;
@@ -14,13 +13,6 @@ type PrintableSampleRow = {
   numeroExterior: string;
   numeroInterior: string;
 };
-
-function formatDate(value: string): string {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString("es-MX");
-}
 
 export default function AdminMuestrasPrintPage() {
   const [row, setRow] = useState<PrintableSampleRow | null>(null);
@@ -83,7 +75,7 @@ export default function AdminMuestrasPrintPage() {
     <>
       <style jsx global>{`
         @page {
-          size: 100mm 55mm;
+          size: 4in 2.25in;
           margin: 0;
         }
 
@@ -93,17 +85,30 @@ export default function AdminMuestrasPrintPage() {
           padding: 0;
           background: #fff;
           color: #000;
+          width: 4in;
+          height: 2.25in;
+          overflow: hidden;
         }
 
         @media print {
-          .print-actions {
+          .screen-only {
             display: none !important;
+          }
+
+          .label-root {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 4in !important;
+            height: 2.25in !important;
+            margin: 0 !important;
+            padding: 0.12in !important;
           }
         }
       `}</style>
 
-      <main className="flex min-h-screen items-start justify-center bg-white p-3 text-black">
-        <div className="print-actions mb-3 w-full max-w-sm">
+      <main className="bg-white p-2 text-black">
+        <div className="screen-only mb-2 w-full max-w-sm">
           <button
             type="button"
             onClick={() => window.print()}
@@ -115,18 +120,17 @@ export default function AdminMuestrasPrintPage() {
 
         <section
           aria-label="Etiqueta de envio"
-          className="flex h-[55mm] w-[100mm] flex-col justify-between border border-black p-[3mm]"
+          className="label-root flex h-[2.25in] w-[4in] flex-col justify-between p-[0.12in]"
         >
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide">Barbacoa Estilo Parral</p>
-            <p className="text-[8px] tracking-wide">www.deherencia.com</p>
-            <p className="mt-[2mm] text-[13px] font-bold leading-tight">{row.nombre}</p>
-            <p className="mt-[2mm] text-[10px] leading-tight">{direccion}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide">Barbacoa Estilo Parral</p>
+            <p className="mt-[0.08in] text-[18px] font-bold leading-tight">{row.nombre}</p>
+            <p className="mt-[0.08in] text-[13px] leading-tight">{direccion}</p>
           </div>
 
           <div>
-            <p className="text-[12px] font-bold">Tel: {row.telefono}</p>
-            <p className="mt-[2mm] text-[8px] text-neutral-700">Registro: {formatDate(row.fechaRegistro)}</p>
+            <p className="text-[16px] font-bold">Tel: {row.telefono}</p>
+            <p className="mt-[0.08in] text-[11px] tracking-wide">www.deherencia.com</p>
           </div>
         </section>
       </main>
