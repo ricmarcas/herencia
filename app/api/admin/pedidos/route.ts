@@ -55,6 +55,18 @@ function findHeaderIndex(headers: string[], candidates: string[]): number {
   return normalized.findIndex((item) => expected.includes(item));
 }
 
+function findHeaderIndexes(headers: string[], candidates: string[]): number[] {
+  const normalized = headers.map((item) => normalizeHeader(item));
+  const expected = candidates.map((item) => normalizeHeader(item));
+  const indexes: number[] = [];
+  normalized.forEach((item, index) => {
+    if (expected.includes(item)) {
+      indexes.push(index);
+    }
+  });
+  return indexes;
+}
+
 function columnToLetter(column: number): string {
   let temp = column;
   let letter = "";
@@ -167,12 +179,14 @@ export async function GET(req: Request) {
     const idxChilePasado = findHeaderIndex(pedidosHeaders, ["ChilePasado", "Chile Pasado"]);
     const idxCp = findHeaderIndex(pedidosHeaders, ["CP", "CodigoPostal", "Codigo Postal"]);
     const idxTotal = findHeaderIndex(pedidosHeaders, ["Total"]);
-    const idxFechaEntregaCliente = findHeaderIndex(pedidosHeaders, ["FechaEntrega", "Fecha Entrega"]);
+    const idxFechaEntregaIndexes = findHeaderIndexes(pedidosHeaders, ["FechaEntrega", "Fecha Entrega"]);
+    const idxFechaEntregaCliente = idxFechaEntregaIndexes[0] ?? -1;
+    const idxFechaEntregaReal = idxFechaEntregaIndexes[1] ?? findHeaderIndex(pedidosHeaders, ["FechaEntregaReal", "EntregadoEl"]);
+    const idxFechaProgramada = findHeaderIndex(pedidosHeaders, ["FechaProgramada", "Programada"]);
     const idxHorario = findHeaderIndex(pedidosHeaders, ["Ventana", "HorarioEntrega", "Horario"]);
     const idxClienteId = findHeaderIndex(pedidosHeaders, ["ClienteID", "IDCliente"]);
     const idxDireccionId = findHeaderIndex(pedidosHeaders, ["DireccionID", "IDDireccion"]);
     const idxEstatus = findHeaderIndex(pedidosHeaders, ["Estatus", "Estado", "EstatusPedido"]);
-    const idxFechaEntregaReal = findHeaderIndex(pedidosHeaders, ["FechaEntregaReal", "EntregadoEl"]);
 
     const idxCliId = findHeaderIndex(clientesHeaders, ["ClienteID", "IDCliente"]);
     const idxCliNombre = findHeaderIndex(clientesHeaders, ["Nombre"]);
@@ -197,11 +211,12 @@ export async function GET(req: Request) {
           : undefined;
 
         const horario = String(idxHorario >= 0 ? row[idxHorario] ?? "" : "").trim();
+        const fechaProgramada = String(idxFechaProgramada >= 0 ? row[idxFechaProgramada] ?? "" : "").trim();
         const fechaEntregaReal = String(idxFechaEntregaReal >= 0 ? row[idxFechaEntregaReal] ?? "" : "").trim();
         const estatusResolved = resolvePedidoStatus(
           String(idxEstatus >= 0 ? row[idxEstatus] ?? "" : ""),
           fechaEntregaReal,
-          horario
+          fechaProgramada || horario
         );
 
         return {
@@ -216,7 +231,7 @@ export async function GET(req: Request) {
           cp: String(idxCp >= 0 ? row[idxCp] ?? "" : "").trim(),
           total: toNumber(String(idxTotal >= 0 ? row[idxTotal] ?? "0" : "0")),
           fechaEntregaCliente: String(idxFechaEntregaCliente >= 0 ? row[idxFechaEntregaCliente] ?? "" : "").trim(),
-          horarioEntrega: horario,
+          horarioEntrega: fechaProgramada || horario,
           clienteId,
           direccionId,
           nombre: String(idxCliNombre >= 0 ? cliente?.[idxCliNombre] ?? "" : "").trim(),
@@ -278,18 +293,24 @@ export async function POST(req: Request) {
     );
 
     const idxHorario = findHeaderIndex(headers, ["Ventana", "HorarioEntrega", "Horario"]);
+    const idxFechaProgramada = findHeaderIndex(headers, ["FechaProgramada", "Programada"]);
+    const idxFechaEntregaIndexes = findHeaderIndexes(headers, ["FechaEntrega", "Fecha Entrega"]);
+    const idxFechaEntregaReal = idxFechaEntregaIndexes[1] ?? findHeaderIndex(headers, ["FechaEntregaReal", "EntregadoEl"]);
     const idxEstatus = findHeaderIndex(headers, ["Estatus", "Estado", "EstatusPedido"]);
-    const idxFechaEntregaReal = findHeaderIndex(headers, ["FechaEntregaReal", "EntregadoEl"]);
 
     if (action === "programar") {
-      if (idxHorario < 0) {
-        return NextResponse.json({ success: false, message: "Columna de horario no encontrada (Ventana/Horario)" }, { status: 400 });
+      if (idxFechaProgramada < 0 && idxHorario < 0) {
+        return NextResponse.json({ success: false, message: "No existe columna FechaProgramada ni Ventana/Horario" }, { status: 400 });
       }
       if (!horarioEntrega) {
         return NextResponse.json({ success: false, message: "Horario requerido" }, { status: 400 });
       }
 
-      rowValues[idxHorario] = horarioEntrega;
+      if (idxFechaProgramada >= 0) {
+        rowValues[idxFechaProgramada] = horarioEntrega;
+      } else if (idxHorario >= 0) {
+        rowValues[idxHorario] = horarioEntrega;
+      }
       if (idxEstatus >= 0) rowValues[idxEstatus] = "programada";
       await updateRow(rowNumber, rowValues);
       return NextResponse.json({ success: true });
