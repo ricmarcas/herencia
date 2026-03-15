@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { google } from "googleapis";
+import { Resend } from "resend";
 import { getSheetData } from "@/lib/sheets";
 
 const PEDIDOS_RANGE = "Pedidos!A1:AZ5000";
@@ -15,6 +16,10 @@ const auth = new google.auth.JWT({
 });
 
 const sheets = google.sheets({ version: "v4", auth });
+const resendApiKey = process.env.RESEND_API_KEY;
+const resendFromEmail = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
+const resendNoReplyEmail = process.env.RESEND_NO_REPLY_EMAIL ?? resendFromEmail;
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 type AdminPedidoRow = {
   rowNumber: number;
@@ -101,6 +106,15 @@ function normalizePhone(value: string): string {
 function toNumber(value: string): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatDateEsMx(value: Date): string {
+  return value.toLocaleDateString("es-MX", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 function getAdminPassword(): string {
@@ -306,8 +320,11 @@ export async function POST(req: Request) {
     const idxHorario = findHeaderIndex(headers, ["Ventana", "HorarioEntrega", "Horario"]);
     const idxFechaProgramada = findHeaderIndex(headers, ["FechaProgramada", "Programada"]);
     const idxFechaEntregaIndexes = findHeaderIndexes(headers, ["FechaEntrega", "Fecha Entrega"]);
+    const idxFechaEntregaCliente = idxFechaEntregaIndexes[0] ?? -1;
     const idxFechaEntregaReal = idxFechaEntregaIndexes[1] ?? findHeaderIndex(headers, ["FechaEntregaReal", "EntregadoEl"]);
     const idxEstatus = findHeaderIndex(headers, ["Estatus", "Estado", "EstatusPedido"]);
+    const idxClienteId = findHeaderIndex(headers, ["ClienteID", "IDCliente"]);
+    const idxUltimoEmail = findHeaderIndex(headers, ["UltimoEmail"]);
 
     if (action === "programar") {
       if (idxFechaProgramada < 0 && idxHorario < 0) {
@@ -323,8 +340,62 @@ export async function POST(req: Request) {
         rowValues[idxHorario] = horarioEntrega;
       }
       if (idxEstatus >= 0) rowValues[idxEstatus] = "programada";
+
+      let emailSent = false;
+      if (resend && idxClienteId >= 0) {
+        const clienteId = String(rowValues[idxClienteId] ?? "").trim();
+        if (clienteId) {
+          const clientesRows = await getSheetData(CLIENTES_RANGE);
+          const cHeaders = clientesRows[0] ?? [];
+          const cData = clientesRows.slice(1);
+          const idxCClienteId = findHeaderIndex(cHeaders, ["ClienteID", "IDCliente"]);
+          const idxCEmail = findHeaderIndex(cHeaders, ["Email", "Correo", "CorreoElectronico"]);
+          const idxCNombre = findHeaderIndex(cHeaders, ["Nombre"]);
+
+          if (idxCClienteId >= 0 && idxCEmail >= 0) {
+            const cliente = cData.find((item) => String(item[idxCClienteId] ?? "").trim() === clienteId);
+            const email = String(cliente?.[idxCEmail] ?? "").trim().toLowerCase();
+            const nombre = String(idxCNombre >= 0 ? cliente?.[idxCNombre] ?? "" : "").trim();
+            if (email) {
+              const fechaClienteRaw = String(idxFechaEntregaCliente >= 0 ? rowValues[idxFechaEntregaCliente] ?? "" : "").trim();
+              const fechaCliente = new Date(fechaClienteRaw);
+              const fechaTexto = Number.isNaN(fechaCliente.getTime()) ? fechaClienteRaw : formatDateEsMx(fechaCliente);
+
+              const html = `
+                <h2>Tu pedido ya fue programado</h2>
+                <p>Hola ${nombre || "cliente"},</p>
+                <p>Tu pedido mantiene la fecha solicitada y ya tiene una ventana de entrega.</p>
+                <p><strong>Fecha solicitada:</strong> ${fechaTexto || "No disponible"}</p>
+                <p><strong>Ventana de entrega:</strong> ${horarioEntrega}</p>
+                <p>Gracias por tu compra en Barbacoa Estilo Parral.</p>
+                <p>Este correo es informativo, por favor no responder.</p>
+              `;
+
+              try {
+                await resend.emails.send({
+                  from: resendNoReplyEmail,
+                  to: [email],
+                  subject: "Confirmacion de horario de entrega de tu pedido",
+                  html,
+                });
+                emailSent = true;
+              } catch (emailError) {
+                console.error("No se pudo enviar correo de programacion de pedido:", emailError);
+              }
+            }
+          }
+        }
+      }
+
+      if (emailSent && idxUltimoEmail >= 0) {
+        rowValues[idxUltimoEmail] = new Date().toISOString();
+      }
+
       await updateRow(rowNumber, rowValues);
-      return NextResponse.json({ success: true });
+      return NextResponse.json({
+        success: true,
+        message: emailSent ? "Pedido programado y correo enviado." : "Pedido programado. No se pudo enviar correo.",
+      });
     }
 
     if (action === "entregar") {
