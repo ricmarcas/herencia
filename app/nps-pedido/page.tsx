@@ -17,6 +17,10 @@ export default function NpsPedidoPage() {
   const [comentario, setComentario] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const closePage = () => {
+    window.close();
+    window.location.href = "/";
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -115,6 +119,13 @@ export default function NpsPedidoPage() {
         <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-xl">
           <h1 className="mb-3 text-2xl font-semibold">Gracias por tu tiempo</h1>
           <p className="text-sm text-neutral-700">Tu evaluacion fue registrada correctamente.</p>
+          <button
+            type="button"
+            onClick={closePage}
+            className="mt-6 w-full rounded-xl border border-neutral-300 py-3"
+          >
+            Cerrar
+          </button>
         </div>
       </main>
     );

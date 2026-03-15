@@ -21,6 +21,10 @@ export default function NpsPage() {
 
   const remainingChars = useMemo(() => 280 - comment.length, [comment.length]);
   const checkoutOfferUrl = `${CANONICAL_CHECKOUT_BASE_URL}/pedido`;
+  const closePage = () => {
+    window.close();
+    window.location.href = "/";
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -135,6 +139,13 @@ export default function NpsPage() {
               </a>
             </div>
           ) : null}
+          <button
+            type="button"
+            onClick={closePage}
+            className="mt-6 w-full rounded-xl border border-neutral-300 py-3"
+          >
+            Cerrar
+          </button>
         </div>
       </main>
     );
