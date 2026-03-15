@@ -84,6 +84,16 @@ function normalizeStatus(value: string): string {
   return String(value ?? "").trim().toLowerCase();
 }
 
+function hasOperationalSchedule(value: string): boolean {
+  const raw = String(value ?? "").trim();
+  if (!raw) return false;
+  const normalized = raw.toUpperCase();
+  if (normalized === "SIN_VENTANA" || normalized === "SIN HORARIO" || normalized === "N/A" || normalized === "-") {
+    return false;
+  }
+  return true;
+}
+
 function normalizePhone(value: string): string {
   return String(value ?? "").replace(/\D/g, "").slice(0, 10);
 }
@@ -121,7 +131,7 @@ function resolvePedidoStatus(
   if (horario.toUpperCase().includes("ENTREGADA")) {
     return "entregada";
   }
-  if (horario.length > 0) {
+  if (hasOperationalSchedule(horario)) {
     return "programada";
   }
 
@@ -213,10 +223,11 @@ export async function GET(req: Request) {
         const horario = String(idxHorario >= 0 ? row[idxHorario] ?? "" : "").trim();
         const fechaProgramada = String(idxFechaProgramada >= 0 ? row[idxFechaProgramada] ?? "" : "").trim();
         const fechaEntregaReal = String(idxFechaEntregaReal >= 0 ? row[idxFechaEntregaReal] ?? "" : "").trim();
+        const horarioOperativo = hasOperationalSchedule(horario) ? horario : "";
         const estatusResolved = resolvePedidoStatus(
           String(idxEstatus >= 0 ? row[idxEstatus] ?? "" : ""),
           fechaEntregaReal,
-          fechaProgramada || horario
+          fechaProgramada || horarioOperativo
         );
 
         return {
@@ -231,7 +242,7 @@ export async function GET(req: Request) {
           cp: String(idxCp >= 0 ? row[idxCp] ?? "" : "").trim(),
           total: toNumber(String(idxTotal >= 0 ? row[idxTotal] ?? "0" : "0")),
           fechaEntregaCliente: String(idxFechaEntregaCliente >= 0 ? row[idxFechaEntregaCliente] ?? "" : "").trim(),
-          horarioEntrega: fechaProgramada || horario,
+          horarioEntrega: fechaProgramada || horarioOperativo,
           clienteId,
           direccionId,
           nombre: String(idxCliNombre >= 0 ? cliente?.[idxCliNombre] ?? "" : "").trim(),
