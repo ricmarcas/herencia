@@ -5,6 +5,7 @@ import Stripe from "stripe";
 import { google } from "googleapis";
 import { Resend } from "resend";
 import { appendRow, getSheetData } from "@/lib/sheets";
+import { appendHerenciaSignature } from "@/lib/email-brand";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET as string;
@@ -491,7 +492,7 @@ async function sendPaidOrderNotification(payload: {
     from: resendFromEmail,
     to: [orderNotificationEmail],
     subject,
-    html,
+    html: appendHerenciaSignature(html),
     replyTo: payload.email || undefined,
   });
 }

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { google } from "googleapis";
 import { Resend } from "resend";
 import { getSheetData } from "@/lib/sheets";
+import { appendHerenciaSignature } from "@/lib/email-brand";
 
 const SHEET_RANGE = "MuestrasRegistros!A1:AZ5000";
 
@@ -274,7 +275,7 @@ export async function POST(req: Request) {
             from: resendNoReplyEmail,
             to: [email],
             subject,
-            html,
+            html: appendHerenciaSignature(html),
           });
           emailSent = true;
         } catch (emailError) {

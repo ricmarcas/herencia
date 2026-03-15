@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { appendRow, getSheetData } from "@/lib/sheets";
+import { appendHerenciaSignature } from "@/lib/email-brand";
 
 const REGISTROS_READ_RANGE = "MuestrasRegistros!A2:S5000";
 const REGISTROS_APPEND_RANGE = "MuestrasRegistros!A:S";
@@ -306,7 +307,7 @@ export async function POST(req: Request) {
           to: [notificationEmail],
           replyTo: payload.email,
           subject,
-          html,
+          html: appendHerenciaSignature(html),
         });
       } catch (emailError) {
         console.error("Error enviando notificacion de muestra:", emailError);
@@ -334,7 +335,7 @@ export async function POST(req: Request) {
           from: resendNoReplyEmail,
           to: [payload.email],
           subject: customerSubject,
-          html: customerHtml,
+          html: appendHerenciaSignature(customerHtml),
         });
       } catch (customerEmailError) {
         console.error("Error enviando confirmacion de muestra al cliente:", customerEmailError);

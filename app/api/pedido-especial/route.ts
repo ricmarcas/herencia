@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { appendHerenciaSignature } from "@/lib/email-brand";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const toEmail = process.env.SPECIAL_ORDERS_TO_EMAIL;
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
       to: [toEmail],
       replyTo: email,
       subject,
-      html,
+      html: appendHerenciaSignature(html),
     });
 
     const confirmationHtml = `
@@ -78,7 +79,7 @@ export async function POST(req: Request) {
         from: noReplyEmail,
         to: [email],
         subject: "Recibimos tu pedido especial - Barbacoa Herencia",
-        html: confirmationHtml,
+        html: appendHerenciaSignature(confirmationHtml),
       });
     } catch (confirmationError) {
       console.error("No se pudo enviar correo de confirmacion al cliente:", confirmationError);

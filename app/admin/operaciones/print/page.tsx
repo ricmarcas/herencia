@@ -121,7 +121,12 @@ export default function AdminOperacionesPrintPage() {
           </button>
         </div>
 
-        <section aria-label="Etiqueta de envio" className="label-root flex h-[2.25in] w-[4in] flex-col justify-between p-[0.1in] pl-[0.15in]">
+        <section aria-label="Etiqueta de envio" className="label-root relative flex h-[2.25in] w-[4in] flex-col justify-between p-[0.1in] pl-[0.15in]">
+          <img
+            src="/images/logoHerencia.png"
+            alt="Herencia"
+            className="absolute right-[0.1in] top-[0.1in] h-[10mm] w-[10mm] object-contain"
+          />
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide">Barbacoa Estilo Parral</p>
             <p className="mt-[0.08in] text-[18px] font-bold leading-tight">{payload.nombre}</p>

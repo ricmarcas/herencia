@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { google } from "googleapis";
 import { Resend } from "resend";
 import { getSheetData } from "@/lib/sheets";
+import { appendHerenciaSignature } from "@/lib/email-brand";
 
 const SHEET_RANGE = "MuestrasRegistros!A1:AZ5000";
 
@@ -98,13 +99,13 @@ function buildNpsEmailHtml(baseUrl: string, email: string, nombre: string): stri
     return `<a href="${url}" style="display:inline-block;margin:4px;padding:10px 12px;border-radius:8px;background:#7a5c3e;color:#fff;text-decoration:none;">${score}</a>`;
   }).join("");
 
-  return `
+  return appendHerenciaSignature(`
     <h2>¿Recomendarías la Barbacoa estilo Parral?</h2>
     <p>Hola ${nombre || "cliente"}, tu opinion nos ayuda a mejorar.</p>
     <p>¿Qué tan probable es que recomiendes nuestra Barbacoa? donde 0 es "olvidalo no la recomendaría" y 10 es "Me encató! y la recomentaría 100%"</p>
     <div>${buttons}</div>
     <p style="margin-top:16px">Gracias por tu tiempo.</p>
-  `;
+  `);
 }
 
 function resolvePublicBaseUrl(req: Request): string {

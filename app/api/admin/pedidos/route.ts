@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { google } from "googleapis";
 import { Resend } from "resend";
 import { getSheetData } from "@/lib/sheets";
+import { appendHerenciaSignature } from "@/lib/email-brand";
 
 const PEDIDOS_RANGE = "Pedidos!A1:AZ5000";
 const CLIENTES_RANGE = "Clientes!A1:Z5000";
@@ -367,7 +368,7 @@ export async function POST(req: Request) {
                 <p>Tu pedido mantiene la fecha solicitada y ya tiene una ventana de entrega.</p>
                 <p><strong>Fecha solicitada:</strong> ${fechaTexto || "No disponible"}</p>
                 <p><strong>Ventana de entrega:</strong> ${horarioEntrega}</p>
-                <p>Gracias por tu compra en Barbacoa Estilo Parral.</p>
+                <p>Gracias por tu compra de Barbacoa Estilo Parral.</p>
                 <p>Este correo es informativo, por favor no responder.</p>
               `;
 
@@ -376,7 +377,7 @@ export async function POST(req: Request) {
                   from: resendNoReplyEmail,
                   to: [email],
                   subject: "Confirmacion de horario de entrega de tu pedido",
-                  html,
+                  html: appendHerenciaSignature(html),
                 });
                 emailSent = true;
               } catch (emailError) {

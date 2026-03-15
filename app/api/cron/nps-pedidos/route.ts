@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { google } from "googleapis";
 import { Resend } from "resend";
 import { getSheetData } from "@/lib/sheets";
+import { appendHerenciaSignature } from "@/lib/email-brand";
 
 const PEDIDOS_RANGE = "Pedidos!A1:AZ5000";
 const CLIENTES_RANGE = "Clientes!A1:Z5000";
@@ -100,13 +101,13 @@ function buildNpsPedidoEmailHtml(baseUrl: string, pedidoId: string, nombre: stri
     return `<a href="${url}" style="display:inline-block;margin:4px;padding:10px 12px;border-radius:8px;background:#7a5c3e;color:#fff;text-decoration:none;">${score}</a>`;
   }).join("");
 
-  return `
+  return appendHerenciaSignature(`
     <h2>Como fue tu experiencia con tu pedido?</h2>
     <p>Hola ${nombre || "cliente"}, gracias por comprar en Barbacoa Estilo Parral.</p>
     <p>1) Evalua tu experiencia general (0 a 10):</p>
     <div>${buttons}</div>
     <p style="margin-top:12px">Despues podras evaluar entrega y sabor en un paso final.</p>
-  `;
+  `);
 }
 
 async function updateRow(sheetRowNumber: number, values: Array<string | number | boolean>) {
