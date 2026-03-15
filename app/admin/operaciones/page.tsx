@@ -299,6 +299,26 @@ export default function AdminOperacionesPage() {
     }
   };
 
+  const sendNpsPedidosPending = async () => {
+    setLoading(true);
+    setError("");
+    setCrmMessage("");
+    try {
+      const response = await fetch("/api/cron/nps-pedidos", {
+        method: "POST",
+        headers: { "x-admin-password": password },
+      });
+      const data = (await response.json()) as { success: boolean; sent?: number; skipped?: number; message?: string };
+      if (!data.success) throw new Error(data.message ?? "No se pudo ejecutar NPS de pedidos.");
+      setCrmMessage(`NPS pedidos ejecutado. Enviados: ${data.sent ?? 0}. Omitidos: ${data.skipped ?? 0}.`);
+      await reload();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "No se pudo ejecutar NPS de pedidos.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isAuthed) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#f5f1e8] px-4 py-12">
@@ -335,6 +355,9 @@ export default function AdminOperacionesPage() {
             </button>
             <button type="button" onClick={() => void sendNpsMuestrasPending()} className="rounded-xl bg-neutral-900 px-4 py-2 text-sm text-white">
               Ejecutar NPS muestras
+            </button>
+            <button type="button" onClick={() => void sendNpsPedidosPending()} className="rounded-xl bg-neutral-900 px-4 py-2 text-sm text-white">
+              Ejecutar NPS pedidos
             </button>
             <button type="button" onClick={() => void reload()} className="rounded-xl bg-neutral-200 px-4 py-2 text-sm">
               Recargar
