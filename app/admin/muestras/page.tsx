@@ -80,8 +80,22 @@ function printRow(row: AdminSampleRow) {
   win.document.open();
   win.document.write(html);
   win.document.close();
-  win.focus();
-  win.print();
+
+  const triggerPrint = () => {
+    try {
+      win.focus();
+      win.print();
+    } catch {
+      // Ignore print errors; user can print manually from the opened window.
+    }
+  };
+
+  // Prefer printing after full load; keep a timeout fallback for browsers that
+  // do not reliably fire onload on document.write windows.
+  win.onload = () => {
+    window.setTimeout(triggerPrint, 150);
+  };
+  window.setTimeout(triggerPrint, 700);
 }
 
 export default function AdminMuestrasPage() {
