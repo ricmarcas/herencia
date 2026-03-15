@@ -95,19 +95,28 @@ export default function AdminMuestrasPrintPage() {
             display: none !important;
           }
 
-          .label-root {
-            position: fixed !important;
-            left: 0.125in !important;
-            top: 0.06in !important;
-            width: calc(4in - 0.185in) !important;
-            height: calc(2.25in - 0.12in) !important;
+          main {
             margin: 0 !important;
-            padding: 0.08in 0.09in 0.08in 0.12in !important;
+            padding: 0 !important;
+            width: 4in !important;
+            height: 2.25in !important;
+            overflow: hidden !important;
+          }
+
+          .label-root {
+            position: static !important;
+            width: 4in !important;
+            height: 2.25in !important;
+            margin: 0 !important;
+            padding: 0.1in 0.1in 0.1in 0.15in !important;
+            box-sizing: border-box !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
         }
       `}</style>
 
-      <main className="bg-white p-2 text-black">
+      <main className="h-[2.25in] w-[4in] overflow-hidden bg-white p-0 text-black">
         <div className="screen-only mb-2 w-full max-w-sm">
           <button
             type="button"
@@ -120,7 +129,7 @@ export default function AdminMuestrasPrintPage() {
 
         <section
           aria-label="Etiqueta de envio"
-          className="label-root flex h-[2.13in] w-[3.815in] flex-col justify-between p-[0.08in] pl-[0.12in]"
+          className="label-root flex h-[2.25in] w-[4in] flex-col justify-between p-[0.1in] pl-[0.15in]"
         >
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide">Barbacoa Estilo Parral</p>
