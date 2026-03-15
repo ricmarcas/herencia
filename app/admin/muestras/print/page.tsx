@@ -93,8 +93,6 @@ export default function AdminMuestrasPrintPage() {
         <p className="mb-2"><strong>Nombre:</strong> {row.nombre}</p>
         <p className="mb-2"><strong>Direccion:</strong> {direccion}</p>
         <p className="mb-2"><strong>Telefono:</strong> {row.telefono}</p>
-        <p className="mb-2"><strong>Email:</strong> {row.email}</p>
-        <p className="mb-2"><strong>Fecha solicitud:</strong> {formatDate(row.fechaRegistro)}</p>
       </div>
     </main>
   );
