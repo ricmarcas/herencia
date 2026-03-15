@@ -80,20 +80,56 @@ export default function AdminMuestrasPrintPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white p-8 text-black">
-      <h1 className="mb-4 text-2xl font-semibold">Entrega de muestra</h1>
-      <button
-        type="button"
-        onClick={() => window.print()}
-        className="mb-4 rounded-lg border px-4 py-2 text-sm"
-      >
-        Imprimir
-      </button>
-      <div className="rounded-xl border border-neutral-300 p-4">
-        <p className="mb-2"><strong>Nombre:</strong> {row.nombre}</p>
-        <p className="mb-2"><strong>Direccion:</strong> {direccion}</p>
-        <p className="mb-2"><strong>Telefono:</strong> {row.telefono}</p>
-      </div>
-    </main>
+    <>
+      <style jsx global>{`
+        @page {
+          size: 55mm 100mm;
+          margin: 0;
+        }
+
+        html,
+        body {
+          margin: 0;
+          padding: 0;
+          background: #fff;
+          color: #000;
+        }
+
+        @media print {
+          .print-actions {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      <main className="flex min-h-screen items-start justify-center bg-white p-3 text-black">
+        <div className="print-actions mb-3 w-full max-w-sm">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="rounded-lg border px-4 py-2 text-sm"
+          >
+            Imprimir etiqueta
+          </button>
+        </div>
+
+        <section
+          aria-label="Etiqueta de envio"
+          className="flex h-[100mm] w-[55mm] flex-col justify-between border border-black p-[3mm]"
+        >
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wide">Barbacoa Estilo Parral</p>
+            <p className="text-[8px] tracking-wide">www.deherencia.com</p>
+            <p className="mt-[2mm] text-[13px] font-bold leading-tight">{row.nombre}</p>
+            <p className="mt-[2mm] text-[10px] leading-tight">{direccion}</p>
+          </div>
+
+          <div>
+            <p className="text-[12px] font-bold">Tel: {row.telefono}</p>
+            <p className="mt-[2mm] text-[8px] text-neutral-700">Registro: {formatDate(row.fechaRegistro)}</p>
+          </div>
+        </section>
+      </main>
+    </>
   );
 }
