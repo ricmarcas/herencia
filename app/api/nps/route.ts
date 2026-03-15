@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { google } from "googleapis";
 import { getSheetData } from "@/lib/sheets";
+import { createNpsOfferToken } from "@/lib/nps-offer";
 
 const SHEET_RANGE = "MuestrasRegistros!A1:AZ5000";
 
@@ -93,6 +94,7 @@ export async function POST(req: Request) {
     const idxEmail = findHeaderIndex(headers, ["Email"]);
     const idxNps = findHeaderIndex(headers, ["NPS"]);
     const idxComentario = findHeaderIndex(headers, ["Comentario"]);
+    const idxEstatus = findHeaderIndex(headers, ["Estatus", "Estado"]);
 
     if (idxEmail < 0) {
       return NextResponse.json({ success: false, message: "Columna Email no encontrada" }, { status: 500 });
@@ -110,11 +112,22 @@ export async function POST(req: Request) {
       (_, idx) => currentRow[idx] ?? ""
     );
 
+    let offerToken = "";
+    let offerExpiresAt = "";
+
     if (hasScore) {
       if (idxNps < 0) {
         return NextResponse.json({ success: false, message: "Columna NPS no encontrada" }, { status: 500 });
       }
       mutableRow[idxNps] = score;
+
+      if (score >= 8) {
+        if (idxEstatus >= 0) {
+          mutableRow[idxEstatus] = "cupon";
+        }
+        offerToken = createNpsOfferToken(email, 7);
+        offerExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      }
     }
 
     if (comment) {
@@ -125,7 +138,12 @@ export async function POST(req: Request) {
     }
 
     await updateRow(sheetRowNumber, mutableRow);
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      offerToken,
+      offerExpiresAt,
+      offerDiscountPercent: offerToken ? 20 : 0,
+    });
   } catch (error: unknown) {
     return NextResponse.json(
       {

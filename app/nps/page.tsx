@@ -15,6 +15,8 @@ export default function NpsPage() {
   const [comment, setComment] = useState("");
   const [error, setError] = useState("");
   const [savingComment, setSavingComment] = useState(false);
+  const [offerToken, setOfferToken] = useState("");
+  const [offerExpiresAt, setOfferExpiresAt] = useState("");
 
   const remainingChars = useMemo(() => 280 - comment.length, [comment.length]);
 
@@ -40,10 +42,18 @@ export default function NpsPage() {
           body: JSON.stringify({ email: emailParam, score: scoreParam }),
         });
 
-        const data = (await response.json()) as { success: boolean; message?: string };
+        const data = (await response.json()) as {
+          success: boolean;
+          message?: string;
+          offerToken?: string;
+          offerExpiresAt?: string;
+        };
         if (!data.success) {
           throw new Error(data.message ?? "No se pudo guardar tu calificacion.");
         }
+
+        setOfferToken(String(data.offerToken ?? ""));
+        setOfferExpiresAt(String(data.offerExpiresAt ?? ""));
 
         setStep("ready");
       } catch (requestError) {
@@ -111,6 +121,18 @@ export default function NpsPage() {
         <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-xl">
           <h1 className="mb-3 text-2xl font-semibold">Gracias por tu respuesta</h1>
           <p className="text-sm text-neutral-700">Tu comentario fue registrado correctamente.</p>
+          {offerToken ? (
+            <div className="mt-6 rounded-xl border border-emerald-300 bg-emerald-50 p-4">
+              <p className="text-sm font-medium text-emerald-900">Por tu evaluacion, tienes 20% de descuento en tu primera compra.</p>
+              <p className="mt-1 text-xs text-emerald-800">Vigencia de 7 dias. Uso unico.</p>
+              <a
+                href={`/pedido?nps_offer=${encodeURIComponent(offerToken)}`}
+                className="mt-3 inline-block rounded-xl bg-emerald-700 px-4 py-2 text-sm text-white"
+              >
+                Comprar ahora y aprovechar promocion
+              </a>
+            </div>
+          ) : null}
         </div>
       </main>
     );
@@ -122,6 +144,21 @@ export default function NpsPage() {
         <h1 className="mb-2 text-2xl font-semibold">Gracias por evaluar tu experiencia</h1>
         <p className="mb-2 text-sm text-neutral-700">Calificacion registrada: <strong>{score}</strong> / 10</p>
         <p className="mb-6 text-sm text-neutral-600">Si deseas, deja un comentario adicional (opcional).</p>
+
+        {offerToken ? (
+          <div className="mb-6 rounded-xl border border-emerald-300 bg-emerald-50 p-4">
+            <p className="text-sm font-medium text-emerald-900">Gracias por tu evaluacion. Tienes 20% de descuento en tu primera compra.</p>
+            <p className="mt-1 text-xs text-emerald-800">
+              Vigencia: {offerExpiresAt ? new Date(offerExpiresAt).toLocaleDateString("es-MX") : "7 dias"}.
+            </p>
+            <a
+              href={`/pedido?nps_offer=${encodeURIComponent(offerToken)}`}
+              className="mt-3 inline-block rounded-xl bg-emerald-700 px-4 py-2 text-sm text-white"
+            >
+              Comprar ahora y aprovechar promocion
+            </a>
+          </div>
+        ) : null}
 
         <textarea
           value={comment}

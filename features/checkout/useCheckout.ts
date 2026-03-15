@@ -50,6 +50,7 @@ const initialState: CheckoutState = {
     landingPath: "",
     referrer: "",
     attributionModel: "last_touch",
+    npsOfferToken: "",
   },
   envioDatos: {
     nombre: "",
@@ -111,6 +112,7 @@ type CheckoutAction =
   | { type: "SET_NUMERO_INTERIOR"; payload: string }
   | { type: "SET_COLONIA"; payload: string }
   | { type: "SET_PROMO_LOOKUP_PHONE"; payload: string }
+  | { type: "SET_NPS_OFFER_TOKEN"; payload: string }
   | {
       type: "SET_PROMO";
       payload: {
@@ -312,6 +314,15 @@ function checkoutReducer(state: CheckoutState, action: CheckoutAction): Checkout
 
     case "SET_PROMO_LOOKUP_PHONE":
       return { ...state, promoLookupPhone: normalizePhone(action.payload) };
+
+    case "SET_NPS_OFFER_TOKEN":
+      return {
+        ...state,
+        pedido: {
+          ...state.pedido,
+          npsOfferToken: action.payload.trim(),
+        },
+      };
 
     case "SET_PROMO":
       return {
@@ -639,6 +650,7 @@ export function useCheckout() {
         landingPath: attribution.landingPath,
         referrer: attribution.referrer,
         attributionModel: attribution.attributionModel,
+        npsOfferToken: state.pedido.npsOfferToken,
       };
 
       const response = await createCheckoutSession(payload);
@@ -678,6 +690,7 @@ export function useCheckout() {
       setNumeroInterior: (numeroInterior: string) => dispatch({ type: "SET_NUMERO_INTERIOR", payload: numeroInterior }),
       setColonia: (colonia: string) => dispatch({ type: "SET_COLONIA", payload: colonia }),
       setPromoLookupPhone: (telefono: string) => dispatch({ type: "SET_PROMO_LOOKUP_PHONE", payload: telefono }),
+      setNpsOfferToken: (token: string) => dispatch({ type: "SET_NPS_OFFER_TOKEN", payload: token }),
     },
   };
 }

@@ -408,6 +408,45 @@ async function sendPaidOrderNotification(payload: {
   });
 }
 
+async function markSampleLeadAsCliente(emailRaw: string, clienteId: string): Promise<void> {
+  const email = String(emailRaw).trim().toLowerCase();
+  if (!email) return;
+
+  const rows = await getSheetData("MuestrasRegistros!A1:AZ5000");
+  const headers = rows[0] ?? [];
+  const data = rows.slice(1);
+  if (!headers.length) return;
+
+  const idxEmail = findHeaderIndex(headers, ["Email"]);
+  const idxEstatus = findHeaderIndex(headers, ["Estatus", "Estado"]);
+  const idxComentario = findHeaderIndex(headers, ["Comentario"]);
+  const idxUltimoEmail = findHeaderIndex(headers, ["UltimoEmail"]);
+
+  if (idxEmail < 0 || idxEstatus < 0) return;
+
+  const rowIndex = data.findIndex((row) => String(row[idxEmail] ?? "").trim().toLowerCase() === email);
+  if (rowIndex < 0) return;
+
+  const sheetRowNumber = rowIndex + 2;
+  const currentRow = rows[sheetRowNumber - 1] ?? [];
+  const mutableRow: Array<string | number | boolean> = Array.from(
+    { length: headers.length },
+    (_, idx) => currentRow[idx] ?? ""
+  );
+
+  mutableRow[idxEstatus] = "cliente";
+  if (idxUltimoEmail >= 0) {
+    mutableRow[idxUltimoEmail] = new Date().toISOString();
+  }
+  if (idxComentario >= 0) {
+    const previous = String(mutableRow[idxComentario] ?? "").trim();
+    const note = `Convertido a cliente (${clienteId || "sin_id"})`;
+    mutableRow[idxComentario] = previous ? `${previous} | ${note}` : note;
+  }
+
+  await updateRow("MuestrasRegistros", sheetRowNumber, mutableRow);
+}
+
 export async function POST(req: Request) {
   try {
     const rawBody = await req.text();
@@ -499,6 +538,12 @@ export async function POST(req: Request) {
         referrer,
         attributionModel,
       });
+
+      try {
+        await markSampleLeadAsCliente(email, clienteId);
+      } catch (crmError) {
+        console.error("No se pudo actualizar estatus de muestra a cliente:", crmError);
+      }
 
       try {
         await sendPaidOrderNotification({

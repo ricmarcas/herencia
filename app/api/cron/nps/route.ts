@@ -132,7 +132,7 @@ async function runNpsFollowup() {
       return NextResponse.json({ success: false, message: "Faltan columnas requeridas en MuestrasRegistros" }, { status: 500 });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://deherencia.com";
+    const baseUrl = process.env.NPS_BASE_URL ?? "https://www.deherencia.com";
     let sent = 0;
     let skipped = 0;
 

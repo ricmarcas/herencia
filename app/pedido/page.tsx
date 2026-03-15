@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckoutHeader } from "@/components/CheckoutHeader";
 import { DeliveryDate } from "@/components/DeliveryDate";
@@ -346,6 +346,14 @@ function PaymentStep({
 export default function PedidoPage() {
   const router = useRouter();
   const { state, totals, dateRange, coloniasDisponibles, actions } = useCheckout();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = String(params.get("nps_offer") ?? "").trim();
+    if (token) {
+      actions.setNpsOfferToken(token);
+    }
+  }, []);
 
   const goToPayment = async () => {
     const url = await actions.startPayment();

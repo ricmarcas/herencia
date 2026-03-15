@@ -47,6 +47,7 @@ export type PedidoPayload = {
   landingPath: string;
   referrer: string;
   attributionModel: "last_touch";
+  npsOfferToken: string;
 };
 
 export type DatosEnvio = {
