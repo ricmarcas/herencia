@@ -99,9 +99,9 @@ function buildNpsEmailHtml(baseUrl: string, email: string, nombre: string): stri
   }).join("");
 
   return `
-    <h2>¿Que tan probable es que recomiendes Barbacoa Herencia?</h2>
+    <h2>¿Que tan probable es que recomiendes Barbacoa estilo Parral?</h2>
     <p>Hola ${nombre || "cliente"}, tu opinion nos ayuda a mejorar.</p>
-    <p>Califica tu experiencia de 0 a 10:</p>
+    <p>Califica tu experiencia de 0 a 10, donde 0 es lo peor y 10 lo mejor:</p>
     <div>${buttons}</div>
     <p style="margin-top:16px">Gracias por tu tiempo.</p>
   `;
