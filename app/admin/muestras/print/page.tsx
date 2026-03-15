@@ -50,9 +50,12 @@ export default function AdminMuestrasPrintPage() {
   }, [row]);
 
   const direccion = useMemo(() => {
-    if (!row) return "";
+    if (!row) return { line1: "", line2: "" };
     const interior = row.numeroInterior ? ` Int ${row.numeroInterior}` : "";
-    return `${row.calle} ${row.numeroExterior}${interior}, Col. ${row.colonia}, CP ${row.cp}`;
+    return {
+      line1: `${row.calle} ${row.numeroExterior}${interior}`,
+      line2: `Col. ${row.colonia}, CP ${row.cp}`,
+    };
   }, [row]);
 
   if (error) {
@@ -138,12 +141,13 @@ export default function AdminMuestrasPrintPage() {
           />
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide">Barbacoa Estilo Parral</p>
-            <p className="mt-[0.08in] text-[18px] font-bold leading-tight">{row.nombre}</p>
-            <p className="mt-[0.08in] text-[13px] leading-tight">{direccion}</p>
+            <p className="mt-[0.06in] text-[17px] font-bold leading-tight">{row.nombre}</p>
+            <p className="mt-[0.05in] text-[13px] leading-tight">{direccion.line1}</p>
+            <p className="text-[13px] leading-tight">{direccion.line2}</p>
           </div>
 
           <div>
-            <p className="text-[16px] font-bold">Tel: {row.telefono}</p>
+            <p className="text-[15px] font-bold">Tel: {row.telefono}</p>
             <p className="mt-[0.08in] text-[11px] tracking-wide">www.deherencia.com</p>
           </div>
         </section>

@@ -107,11 +107,11 @@ function buildNpsPedidoEmailHtml(baseUrl: string, pedidoId: string, nombre: stri
   }).join("");
 
   return appendHerenciaSignature(`
-    <h2>Como fue tu experiencia con tu pedido?</h2>
-    <p>Hola ${nombre || "cliente"}, gracias por comprar en Barbacoa Estilo Parral.</p>
-    <p>1) Evalua tu experiencia general (0 a 10):</p>
+    <h2>Tu evaluación nos ayuda a mantener calidad o mejorar oportunidades</h2>
+    <p>Hola ${nombre || "cliente"}, gracias por comprar Barbacoa Estilo Parral.</p>
+    <p>1) Evalúa tu experiencia en general: sabor, entrega, empaque. Donde 0 es muy malo y 10 es excelente (0 a 10):</p>
     <div>${buttons}</div>
-    <p style="margin-top:12px">Despues podras evaluar entrega y sabor en un paso final.</p>
+    <p style="margin-top:12px">Después de evaluar general, podrás evaluar la entrega y sabor en un paso final.</p>
   `);
 }
 
@@ -211,7 +211,7 @@ async function runNpsPedidos(req: Request) {
         await resend.emails.send({
           from: resendNoReplyEmail,
           to: [email],
-          subject: "Queremos evaluar tu experiencia con tu pedido",
+          subject: "¿Qué tal tu Barbacoa Estilo Parral? Evalua por favor",
           html: buildNpsPedidoEmailHtml(baseUrl, pedidoId, nombre),
         });
 

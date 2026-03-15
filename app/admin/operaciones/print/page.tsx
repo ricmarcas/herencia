@@ -48,9 +48,12 @@ export default function AdminOperacionesPrintPage() {
   }, [payload]);
 
   const direccion = useMemo(() => {
-    if (!payload) return "";
+    if (!payload) return { line1: "", line2: "" };
     const interior = payload.numeroInterior ? ` Int ${payload.numeroInterior}` : "";
-    return `${payload.calle} ${payload.numeroExterior}${interior}, Col. ${payload.colonia}, CP ${payload.cp}`;
+    return {
+      line1: `${payload.calle} ${payload.numeroExterior}${interior}`,
+      line2: `Col. ${payload.colonia}, CP ${payload.cp}`,
+    };
   }, [payload]);
 
   if (error) {
@@ -132,15 +135,16 @@ export default function AdminOperacionesPrintPage() {
           />
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide">Barbacoa Estilo Parral</p>
-            <p className="mt-[0.06in] text-[16px] font-bold leading-tight">{payload.nombre}</p>
-            <p className="mt-[0.06in] text-[12px] leading-tight">{direccion}</p>
+            <p className="mt-[0.06in] text-[17px] font-bold leading-tight">{payload.nombre}</p>
+            <p className="mt-[0.05in] text-[13px] leading-tight">{direccion.line1}</p>
+            <p className="text-[13px] leading-tight">{direccion.line2}</p>
             {payload.lineas.length > 0 ? (
-              <p className="mt-[0.06in] text-[10px] leading-tight">{payload.lineas.join(" | ")}</p>
+              <p className="mt-[0.05in] text-[11px] leading-tight">{payload.lineas.join(" | ")}</p>
             ) : null}
           </div>
 
           <div>
-            <p className="text-[14px] font-bold">Tel: {payload.telefono}</p>
+            <p className="text-[15px] font-bold">Tel: {payload.telefono}</p>
             <p className="mt-[0.06in] text-[10px] tracking-wide">www.deherencia.com</p>
           </div>
         </section>
