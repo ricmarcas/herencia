@@ -83,7 +83,7 @@ export default function AdminMuestrasPrintPage() {
     <>
       <style jsx global>{`
         @page {
-          size: 55mm 100mm;
+          size: 100mm 55mm;
           margin: 0;
         }
 
@@ -115,7 +115,7 @@ export default function AdminMuestrasPrintPage() {
 
         <section
           aria-label="Etiqueta de envio"
-          className="flex h-[100mm] w-[55mm] flex-col justify-between border border-black p-[3mm]"
+          className="flex h-[55mm] w-[100mm] flex-col justify-between border border-black p-[3mm]"
         >
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wide">Barbacoa Estilo Parral</p>
