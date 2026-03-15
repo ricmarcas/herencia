@@ -7,6 +7,7 @@ import {
   getMaxInventory,
   getProductos,
   getSauceStock,
+  validateNpsOffer,
   validateInventory,
   validatePromo,
   validateZone,
@@ -82,6 +83,9 @@ const initialState: CheckoutState = {
   promoLookupPhone: "",
   promoMessage: "",
   isPromoLoading: false,
+  npsOfferMessage: "",
+  isNpsOfferLoading: false,
+  extraPromos: [],
   promo: null,
 };
 
@@ -89,9 +93,11 @@ type CheckoutAction =
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_PAYING"; payload: boolean }
   | { type: "SET_PROMO_LOADING"; payload: boolean }
+  | { type: "SET_NPS_OFFER_LOADING"; payload: boolean }
   | { type: "SET_ERROR"; payload: string }
   | { type: "SET_ZONE_MESSAGE"; payload: string }
   | { type: "SET_PROMO_MESSAGE"; payload: string }
+  | { type: "SET_NPS_OFFER_MESSAGE"; payload: string }
   | { type: "SET_STEP"; payload: CheckoutStep }
   | { type: "NEXT_STEP" }
   | { type: "PREV_STEP" }
@@ -113,6 +119,20 @@ type CheckoutAction =
   | { type: "SET_COLONIA"; payload: string }
   | { type: "SET_PROMO_LOOKUP_PHONE"; payload: string }
   | { type: "SET_NPS_OFFER_TOKEN"; payload: string }
+  | { type: "SET_EXTRA_PROMOS"; payload: PromoRule[] }
+  | {
+      type: "SET_NPS_PREFILL";
+      payload: {
+        nombre: string;
+        email: string;
+        telefono: string;
+        cp: string;
+        colonia: string;
+        calle: string;
+        numeroExterior: string;
+        numeroInterior: string;
+      };
+    }
   | {
       type: "SET_PROMO";
       payload: {
@@ -199,6 +219,9 @@ function checkoutReducer(state: CheckoutState, action: CheckoutAction): Checkout
     case "SET_PROMO_LOADING":
       return { ...state, isPromoLoading: action.payload };
 
+    case "SET_NPS_OFFER_LOADING":
+      return { ...state, isNpsOfferLoading: action.payload };
+
     case "SET_ERROR":
       return { ...state, error: action.payload };
 
@@ -207,6 +230,9 @@ function checkoutReducer(state: CheckoutState, action: CheckoutAction): Checkout
 
     case "SET_PROMO_MESSAGE":
       return { ...state, promoMessage: action.payload };
+
+    case "SET_NPS_OFFER_MESSAGE":
+      return { ...state, npsOfferMessage: action.payload };
 
     case "SET_STEP":
       return { ...state, step: action.payload };
@@ -324,6 +350,31 @@ function checkoutReducer(state: CheckoutState, action: CheckoutAction): Checkout
         },
       };
 
+    case "SET_EXTRA_PROMOS":
+      return {
+        ...state,
+        extraPromos: action.payload,
+      };
+
+    case "SET_NPS_PREFILL":
+      return {
+        ...state,
+        pedido: {
+          ...state.pedido,
+          cp: state.pedido.cp || action.payload.cp,
+        },
+        envioDatos: {
+          ...state.envioDatos,
+          nombre: state.envioDatos.nombre || action.payload.nombre,
+          email: state.envioDatos.email || action.payload.email,
+          telefono: state.envioDatos.telefono || normalizePhone(action.payload.telefono),
+          colonia: state.envioDatos.colonia || action.payload.colonia,
+          calle: state.envioDatos.calle || action.payload.calle,
+          numeroExterior: state.envioDatos.numeroExterior || action.payload.numeroExterior,
+          numeroInterior: state.envioDatos.numeroInterior || action.payload.numeroInterior,
+        },
+      };
+
     case "SET_PROMO":
       return {
         ...state,
@@ -381,7 +432,14 @@ function computeTotals(state: CheckoutState): Totales {
   let percentUsed = false;
   const appliedPromos: PromoRule[] = [];
 
-  const promoRules = [...(state.promo?.promociones ?? [])].sort((a, b) => a.prioridad - b.prioridad);
+  const promoMap = new Map<string, PromoRule>();
+  for (const promo of state.extraPromos) {
+    promoMap.set(promo.promoId, promo);
+  }
+  for (const promo of state.promo?.promociones ?? []) {
+    promoMap.set(promo.promoId, promo);
+  }
+  const promoRules = [...promoMap.values()].sort((a, b) => a.prioridad - b.prioridad);
   for (const promo of promoRules) {
     if (promo.minTotalPedido > 0 && subtotal < promo.minTotalPedido) {
       continue;
@@ -554,6 +612,61 @@ export function useCheckout() {
     }
   };
 
+  const loadNpsOffer = async (token: string): Promise<boolean> => {
+    const cleanToken = token.trim();
+    dispatch({ type: "SET_NPS_OFFER_TOKEN", payload: cleanToken });
+    if (!cleanToken) {
+      dispatch({ type: "SET_EXTRA_PROMOS", payload: [] });
+      dispatch({ type: "SET_NPS_OFFER_MESSAGE", payload: "" });
+      return false;
+    }
+
+    dispatch({ type: "SET_NPS_OFFER_LOADING", payload: true });
+    dispatch({ type: "SET_NPS_OFFER_MESSAGE", payload: "" });
+
+    try {
+      const response = await validateNpsOffer(cleanToken);
+      if (!response.success || !response.eligible) {
+        dispatch({ type: "SET_EXTRA_PROMOS", payload: [] });
+        dispatch({
+          type: "SET_NPS_OFFER_MESSAGE",
+          payload: response.message ?? "No fue posible aplicar la promocion.",
+        });
+        return false;
+      }
+
+      const promoNps: PromoRule = {
+        promoId: "NPS20",
+        nombre: "Descuento NPS 20%",
+        descripcion: "Promocion por evaluacion de muestra",
+        tipo: "PERCENT",
+        valor: 20,
+        minCompras: 0,
+        minTotalPedido: 0,
+        combinable: false,
+        prioridad: 1,
+      };
+
+      dispatch({ type: "SET_EXTRA_PROMOS", payload: [promoNps] });
+      dispatch({
+        type: "SET_NPS_OFFER_MESSAGE",
+        payload: response.message ?? "Promocion NPS activa: 20% en tu primera compra.",
+      });
+
+      if (response.profile) {
+        dispatch({ type: "SET_NPS_PREFILL", payload: response.profile });
+      }
+
+      return true;
+    } catch {
+      dispatch({ type: "SET_EXTRA_PROMOS", payload: [] });
+      dispatch({ type: "SET_NPS_OFFER_MESSAGE", payload: "No fue posible validar la promocion NPS." });
+      return false;
+    } finally {
+      dispatch({ type: "SET_NPS_OFFER_LOADING", payload: false });
+    }
+  };
+
   const nextStep = async (): Promise<boolean> => {
     const hasSauces = hasAnySauceAvailable(state);
 
@@ -676,6 +789,7 @@ export function useCheckout() {
     actions: {
       validateAndLoadZone,
       validateCustomerPromo,
+      loadNpsOffer,
       nextStep,
       backStep,
       startPayment,

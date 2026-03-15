@@ -52,3 +52,21 @@ export type SampleRequestResponse = {
   alreadyRegistered: boolean;
   message: string;
 };
+
+export type ValidateNpsOfferResponse = {
+  success: boolean;
+  eligible: boolean;
+  discountPercent?: number;
+  expiresAt?: string;
+  message?: string;
+  profile?: {
+    nombre: string;
+    email: string;
+    telefono: string;
+    cp: string;
+    colonia: string;
+    calle: string;
+    numeroExterior: string;
+    numeroInterior: string;
+  };
+};

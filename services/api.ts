@@ -7,6 +7,7 @@ import type {
   SauceStockResponse,
   ProductosResponse,
   ValidateInventoryResponse,
+  ValidateNpsOfferResponse,
   ValidateZoneResponse,
 } from "@/types/api";
 import type { PedidoPayload } from "@/types/pedido";
@@ -119,4 +120,14 @@ export async function requestSample(payload: {
   }
 
   return raw;
+}
+
+export async function validateNpsOffer(token: string): Promise<ValidateNpsOfferResponse> {
+  const response = await fetch("/api/validate-nps-offer", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+
+  return parseJson<ValidateNpsOfferResponse>(response);
 }

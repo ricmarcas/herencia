@@ -80,6 +80,9 @@ export type CheckoutState = {
   promoLookupPhone: string;
   promoMessage: string;
   isPromoLoading: boolean;
+  npsOfferMessage: string;
+  isNpsOfferLoading: boolean;
+  extraPromos: PromoRule[];
   promo: {
     phone: string;
     promociones: PromoRule[];

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 type Step = "loading" | "ready" | "saved" | "error";
+const CANONICAL_CHECKOUT_BASE_URL = "https://www.deherencia.com";
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
@@ -19,6 +20,13 @@ export default function NpsPage() {
   const [offerExpiresAt, setOfferExpiresAt] = useState("");
 
   const remainingChars = useMemo(() => 280 - comment.length, [comment.length]);
+  const checkoutOfferUrl = useMemo(
+    () =>
+      offerToken
+        ? `${CANONICAL_CHECKOUT_BASE_URL}/pedido?nps_offer=${encodeURIComponent(offerToken)}`
+        : "",
+    [offerToken]
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -126,7 +134,7 @@ export default function NpsPage() {
               <p className="text-sm font-medium text-emerald-900">Por tu evaluacion, tienes 20% de descuento en tu primera compra.</p>
               <p className="mt-1 text-xs text-emerald-800">Vigencia de 7 dias. Uso unico.</p>
               <a
-                href={`/pedido?nps_offer=${encodeURIComponent(offerToken)}`}
+                href={checkoutOfferUrl}
                 className="mt-3 inline-block rounded-xl bg-emerald-700 px-4 py-2 text-sm text-white"
               >
                 Comprar ahora y aprovechar promocion
@@ -152,7 +160,7 @@ export default function NpsPage() {
               Vigencia: {offerExpiresAt ? new Date(offerExpiresAt).toLocaleDateString("es-MX") : "7 dias"}.
             </p>
             <a
-              href={`/pedido?nps_offer=${encodeURIComponent(offerToken)}`}
+              href={checkoutOfferUrl}
               className="mt-3 inline-block rounded-xl bg-emerald-700 px-4 py-2 text-sm text-white"
             >
               Comprar ahora y aprovechar promocion

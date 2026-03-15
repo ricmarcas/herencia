@@ -351,7 +351,7 @@ export default function PedidoPage() {
     const params = new URLSearchParams(window.location.search);
     const token = String(params.get("nps_offer") ?? "").trim();
     if (token) {
-      actions.setNpsOfferToken(token);
+      void actions.loadNpsOffer(token);
     }
   }, []);
 
@@ -389,14 +389,17 @@ export default function PedidoPage() {
             <ProductSelector
               kilos={state.pedido.kilos}
               maxKilos={state.maxKilos}
-            envio={state.pedido.envio}
-            onSelectKilos={actions.setKilos}
-            onBack={actions.backStep}
-            onNext={actions.nextStep}
-            onSpecialOrder={() => router.push(`/pedido-especial?cp=${state.pedido.cp}`)}
-          />
-        </>
-      ) : null}
+              envio={state.pedido.envio}
+              totals={totals}
+              promoMessage={state.npsOfferMessage || state.promoMessage}
+              isPromoLoading={state.isNpsOfferLoading || state.isPromoLoading}
+              onSelectKilos={actions.setKilos}
+              onBack={actions.backStep}
+              onNext={actions.nextStep}
+              onSpecialOrder={() => router.push(`/pedido-especial?cp=${state.pedido.cp}`)}
+            />
+          </>
+        ) : null}
 
         {state.step === 3 ? (
           <SauceSelector

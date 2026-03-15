@@ -107,7 +107,21 @@ function buildNpsEmailHtml(baseUrl: string, email: string, nombre: string): stri
   `;
 }
 
-async function runNpsFollowup() {
+function resolvePublicBaseUrl(req: Request): string {
+  const configured = String(process.env.NPS_BASE_URL ?? "").trim();
+  if (configured.includes("deherencia.com")) {
+    return configured.replace(/\/$/, "");
+  }
+
+  const origin = new URL(req.url).origin;
+  if (origin.includes("deherencia.com")) {
+    return origin.replace(/\/$/, "");
+  }
+
+  return "https://www.deherencia.com";
+}
+
+async function runNpsFollowup(req: Request) {
   if (!resend) {
     return NextResponse.json({ success: false, message: "RESEND_API_KEY no configurada" }, { status: 500 });
   }
@@ -132,7 +146,7 @@ async function runNpsFollowup() {
       return NextResponse.json({ success: false, message: "Faltan columnas requeridas en MuestrasRegistros" }, { status: 500 });
     }
 
-    const baseUrl = process.env.NPS_BASE_URL ?? "https://www.deherencia.com";
+    const baseUrl = resolvePublicBaseUrl(req);
     let sent = 0;
     let skipped = 0;
 
@@ -193,7 +207,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
   }
 
-  return runNpsFollowup();
+  return runNpsFollowup(req);
 }
 
 export async function POST(req: Request) {
@@ -201,5 +215,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
   }
 
-  return runNpsFollowup();
+  return runNpsFollowup(req);
 }
