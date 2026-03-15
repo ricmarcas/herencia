@@ -34,7 +34,7 @@ export default function AdminMuestrasPrintPage() {
       return;
     }
 
-    const raw = window.sessionStorage.getItem(key);
+    const raw = window.localStorage.getItem(key);
     if (!raw) {
       setError("No se encontro la informacion para imprimir.");
       return;
@@ -43,7 +43,7 @@ export default function AdminMuestrasPrintPage() {
     try {
       const parsed = JSON.parse(raw) as PrintableSampleRow;
       setRow(parsed);
-      window.sessionStorage.removeItem(key);
+      window.localStorage.removeItem(key);
     } catch {
       setError("No se pudo leer la informacion para imprimir.");
     }
@@ -82,6 +82,13 @@ export default function AdminMuestrasPrintPage() {
   return (
     <main className="min-h-screen bg-white p-8 text-black">
       <h1 className="mb-4 text-2xl font-semibold">Entrega de muestra</h1>
+      <button
+        type="button"
+        onClick={() => window.print()}
+        className="mb-4 rounded-lg border px-4 py-2 text-sm"
+      >
+        Imprimir
+      </button>
       <div className="rounded-xl border border-neutral-300 p-4">
         <p className="mb-2"><strong>Nombre:</strong> {row.nombre}</p>
         <p className="mb-2"><strong>Direccion:</strong> {direccion}</p>

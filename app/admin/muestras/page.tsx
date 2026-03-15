@@ -50,8 +50,8 @@ function toDatetimeLocalValue(value: string): string {
 
 function printRow(row: AdminSampleRow) {
   const key = `muestras_print_${row.rowNumber}_${Date.now()}`;
-  window.sessionStorage.setItem(key, JSON.stringify(row));
-  window.open(`/admin/muestras/print?key=${encodeURIComponent(key)}`, "_blank", "noopener,noreferrer,width=700,height=900");
+  window.localStorage.setItem(key, JSON.stringify(row));
+  window.open(`/admin/muestras/print?key=${encodeURIComponent(key)}`, "_blank", "width=700,height=900");
 }
 
 export default function AdminMuestrasPage() {
