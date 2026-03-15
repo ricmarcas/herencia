@@ -103,10 +103,10 @@ export default function AdminOperacionesPrintPage() {
 
           .label-root {
             position: static !important;
-            width: 4in !important;
+            width: 3.82in !important;
             height: 2.25in !important;
-            margin: 0 !important;
-            padding: 0.1in 0.1in 0.1in 0.15in !important;
+            margin: 0 0 0 0.12in !important;
+            padding: 0.09in 0.12in 0.08in 0.18in !important;
             box-sizing: border-box !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
@@ -121,24 +121,27 @@ export default function AdminOperacionesPrintPage() {
           </button>
         </div>
 
-        <section aria-label="Etiqueta de envio" className="label-root relative flex h-[2.25in] w-[4in] flex-col justify-between p-[0.1in] pl-[0.15in]">
+        <section
+          aria-label="Etiqueta de envio"
+          className="label-root relative ml-[0.12in] flex h-[2.25in] w-[3.82in] flex-col justify-between p-[0.09in] pr-[0.12in] pl-[0.18in]"
+        >
           <img
             src="/images/logoHerencia.png"
             alt="Herencia"
-            className="absolute right-[0.1in] top-[0.1in] w-[15mm] h-auto object-contain"
+            className="absolute right-[0.12in] top-[0.09in] w-[11mm] h-auto object-contain"
           />
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide">Barbacoa Estilo Parral</p>
-            <p className="mt-[0.08in] text-[18px] font-bold leading-tight">{payload.nombre}</p>
-            <p className="mt-[0.08in] text-[13px] leading-tight">{direccion}</p>
+            <p className="mt-[0.06in] text-[16px] font-bold leading-tight">{payload.nombre}</p>
+            <p className="mt-[0.06in] text-[12px] leading-tight">{direccion}</p>
             {payload.lineas.length > 0 ? (
-              <p className="mt-[0.08in] text-[11px] leading-tight">{payload.lineas.join(" | ")}</p>
+              <p className="mt-[0.06in] text-[10px] leading-tight">{payload.lineas.join(" | ")}</p>
             ) : null}
           </div>
 
           <div>
-            <p className="text-[16px] font-bold">Tel: {payload.telefono}</p>
-            <p className="mt-[0.08in] text-[11px] tracking-wide">www.deherencia.com</p>
+            <p className="text-[14px] font-bold">Tel: {payload.telefono}</p>
+            <p className="mt-[0.06in] text-[10px] tracking-wide">www.deherencia.com</p>
           </div>
         </section>
       </main>
