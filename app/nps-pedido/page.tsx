@@ -12,8 +12,8 @@ export default function NpsPedidoPage() {
   const [step, setStep] = useState<Step>("loading");
   const [pedidoId, setPedidoId] = useState("");
   const [npsPedido, setNpsPedido] = useState<number | null>(null);
-  const [npsEntrega, setNpsEntrega] = useState<number>(10);
-  const [npsSabor, setNpsSabor] = useState<number>(10);
+  const [npsEntrega, setNpsEntrega] = useState<number | null>(null);
+  const [npsSabor, setNpsSabor] = useState<number | null>(null);
   const [comentario, setComentario] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -53,8 +53,15 @@ export default function NpsPedidoPage() {
 
   const saveDetail = async () => {
     if (!pedidoId || npsPedido === null) return;
-    if (!isValidScore(npsEntrega) || !isValidScore(npsSabor)) {
-      setError("Selecciona una calificacion valida para entrega y sabor.");
+    if ((npsEntrega !== null && !isValidScore(npsEntrega)) || (npsSabor !== null && !isValidScore(npsSabor))) {
+      setError("Selecciona una calificacion valida (0 a 10).");
+      return;
+    }
+
+    const comentarioTrimmed = comentario.trim();
+    const hasOptionalData = npsEntrega !== null || npsSabor !== null || comentarioTrimmed.length > 0;
+    if (!hasOptionalData) {
+      setStep("saved");
       return;
     }
 
@@ -68,7 +75,7 @@ export default function NpsPedidoPage() {
           pedidoId,
           npsEntrega,
           npsSabor,
-          comentario: comentario.trim(),
+          comentario: comentarioTrimmed,
         }),
       });
       const data = (await response.json()) as { success: boolean; message?: string };
@@ -118,27 +125,41 @@ export default function NpsPedidoPage() {
       <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-xl">
         <h1 className="mb-2 text-2xl font-semibold">Gracias por evaluar tu pedido</h1>
         <p className="mb-2 text-sm text-neutral-700">Experiencia general registrada: <strong>{npsPedido}</strong> / 10</p>
-        <p className="mb-6 text-sm text-neutral-600">Solo faltan 2 calificaciones mas (entrega y sabor).</p>
+        <p className="mb-6 text-sm text-neutral-600">Entrega y sabor son opcionales. Puedes enviarlo sin responderlos.</p>
 
-        <label className="mb-2 block text-sm font-medium">Entrega del pedido (0-10)</label>
-        <input
-          type="number"
-          min={0}
-          max={10}
-          value={npsEntrega}
-          onChange={(event) => setNpsEntrega(Number(event.target.value))}
+        <label className="mb-2 block text-sm font-medium">Entrega del pedido (opcional)</label>
+        <select
+          value={npsEntrega === null ? "" : String(npsEntrega)}
+          onChange={(event) => {
+            const value = event.target.value;
+            setNpsEntrega(value === "" ? null : Number(value));
+          }}
           className="mb-4 w-full rounded-xl border px-4 py-3"
-        />
+        >
+          <option value="">Selecciona una calificacion (0 a 10)</option>
+          {Array.from({ length: 11 }, (_, score) => (
+            <option key={`entrega-${score}`} value={score}>
+              {score}
+            </option>
+          ))}
+        </select>
 
-        <label className="mb-2 block text-sm font-medium">Sabor de la barbacoa (0-10)</label>
-        <input
-          type="number"
-          min={0}
-          max={10}
-          value={npsSabor}
-          onChange={(event) => setNpsSabor(Number(event.target.value))}
+        <label className="mb-2 block text-sm font-medium">Sabor de la barbacoa (opcional)</label>
+        <select
+          value={npsSabor === null ? "" : String(npsSabor)}
+          onChange={(event) => {
+            const value = event.target.value;
+            setNpsSabor(value === "" ? null : Number(value));
+          }}
           className="mb-4 w-full rounded-xl border px-4 py-3"
-        />
+        >
+          <option value="">Selecciona una calificacion (0 a 10)</option>
+          {Array.from({ length: 11 }, (_, score) => (
+            <option key={`sabor-${score}`} value={score}>
+              {score}
+            </option>
+          ))}
+        </select>
 
         <label className="mb-2 block text-sm font-medium">Comentario (opcional, max 280)</label>
         <textarea

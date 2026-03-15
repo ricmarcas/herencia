@@ -363,7 +363,7 @@ export async function POST(req: Request) {
               const fechaTexto = Number.isNaN(fechaCliente.getTime()) ? fechaClienteRaw : formatDateEsMx(fechaCliente);
 
               const html = `
-                <h2>Tu pedido ya fue programado</h2>
+                <h2>Pedido de Barbacoa Estilo Parral con horario programado</h2>
                 <p>Hola ${nombre || "cliente"},</p>
                 <p>Tu pedido mantiene la fecha solicitada y ya tiene una ventana de entrega.</p>
                 <p><strong>Fecha solicitada:</strong> ${fechaTexto || "No disponible"}</p>
@@ -376,7 +376,7 @@ export async function POST(req: Request) {
                 await resend.emails.send({
                   from: resendNoReplyEmail,
                   to: [email],
-                  subject: "Confirmacion de horario de entrega de tu pedido",
+                  subject: "Horario entrega de pedido Barbacoa Estilo Parral",
                   html: appendHerenciaSignature(html),
                 });
                 emailSent = true;

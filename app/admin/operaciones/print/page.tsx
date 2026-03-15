@@ -106,10 +106,10 @@ export default function AdminOperacionesPrintPage() {
 
           .label-root {
             position: static !important;
-            width: 3.82in !important;
+            width: 3.68in !important;
             height: 2.25in !important;
-            margin: 0 0 0 0.12in !important;
-            padding: 0.09in 0.12in 0.08in 0.18in !important;
+            margin: 0 0 0 0.16in !important;
+            padding: 0.08in 0.16in 0.12in 0.19in !important;
             box-sizing: border-box !important;
             break-inside: avoid !important;
             page-break-inside: avoid !important;
@@ -126,12 +126,12 @@ export default function AdminOperacionesPrintPage() {
 
         <section
           aria-label="Etiqueta de envio"
-          className="label-root relative ml-[0.12in] flex h-[2.25in] w-[3.82in] flex-col justify-between p-[0.09in] pr-[0.12in] pl-[0.18in]"
+          className="label-root relative ml-[0.16in] flex h-[2.25in] w-[3.68in] flex-col justify-between p-[0.08in] pr-[0.16in] pb-[0.12in] pl-[0.19in]"
         >
           <img
             src="/images/logoHerencia.png"
             alt="Herencia"
-            className="absolute right-[0.12in] top-[0.09in] w-[11mm] h-auto object-contain"
+            className="absolute right-[0.16in] top-[0.08in] w-[10mm] h-auto object-contain"
           />
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide">Barbacoa Estilo Parral</p>
@@ -145,7 +145,7 @@ export default function AdminOperacionesPrintPage() {
 
           <div>
             <p className="text-[15px] font-bold">Tel: {payload.telefono}</p>
-            <p className="mt-[0.06in] text-[10px] tracking-wide">www.deherencia.com</p>
+            <p className="mt-[0.04in] text-[9px] tracking-wide">www.deherencia.com</p>
           </div>
         </section>
       </main>
