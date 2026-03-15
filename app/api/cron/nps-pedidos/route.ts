@@ -65,6 +65,11 @@ function normalizeStatus(value: string): string {
   return String(value ?? "").trim().toLowerCase();
 }
 
+function isNpsFollowupStatus(value: string): boolean {
+  const status = normalizeStatus(value);
+  return status.startsWith("seguimiento_");
+}
+
 function isAuthorizedCron(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
   const authorization = req.headers.get("authorization") ?? "";
@@ -159,7 +164,9 @@ async function runNpsPedidos(req: Request) {
     for (const row of pData) {
       const clienteId = String(row[idxClienteId] ?? "").trim();
       const raw = String(row[idxUltimoEmail] ?? "").trim();
+      const estatus = String(idxEstatus >= 0 ? row[idxEstatus] ?? "" : "");
       if (!clienteId || !raw) continue;
+      if (!isNpsFollowupStatus(estatus)) continue;
       const parsed = parseDate(raw);
       if (!parsed) continue;
       const current = lastEmailByClienteId.get(clienteId);
@@ -209,6 +216,9 @@ async function runNpsPedidos(req: Request) {
         });
 
         const nowIso = new Date().toISOString();
+        if (idxEstatus >= 0) {
+          rowValues[idxEstatus] = "seguimiento_1";
+        }
         rowValues[idxUltimoEmail] = nowIso;
         await updateRow(rowNumber, rowValues);
         lastEmailByClienteId.set(clienteId, new Date(nowIso));
